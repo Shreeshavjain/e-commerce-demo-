@@ -14,7 +14,7 @@ export default async function NewProductPage() {
   const currentUser = await getCurrentAuthenticatedUser();
 
   if (!currentUser || !isStaffOrAbove(currentUser)) {
-    redirect("/");
+    redirect("/login");
   }
 
   const categories = await listActiveCategoryTree();

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { AUTH_SESSION_COOKIE_NAME, isAdminPath, isCustomerProtectedPath } from "@/server/auth/route-config";
+import { AUTH_SESSION_COOKIE_NAME, isCustomerProtectedPath } from "@/server/auth/route-config";
 
 // Proxy is the Next.js 16 replacement for middleware. It acts as a first-line route gate for protected areas.
 // Server handlers still verify the session cookie authoritatively before returning sensitive data.
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (!isAdminPath(pathname) && !isCustomerProtectedPath(pathname)) {
+  if (!isCustomerProtectedPath(pathname)) {
     return NextResponse.next();
   }
 
@@ -21,5 +21,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/account/:path*", "/checkout/:path*", "/orders/:path*", "/admin/:path*"],
+  matcher: ["/account/:path*", "/checkout/:path*", "/orders/:path*"],
 };

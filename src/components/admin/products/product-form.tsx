@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, FormProvider, useForm, useWatch } from "react-hook-form";
+import type { Resolver } from "react-hook-form";
 import { Check, Loader2, Sparkles } from "lucide-react";
-import { z } from "zod";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { CategoryTreeNode } from "@/services/categories";
-import { productCreateSchema, type ProductMediaInput } from "@/validations/product";
+import { productCreateSchema, type ProductCreateInput as ProductFormValues, type ProductMediaInput } from "@/validations/product";
 import { ImageUploadField } from "@/components/admin/products/image-upload-field";
 import { VariantBuilder } from "@/components/admin/products/variant-builder";
 import {
@@ -22,8 +22,6 @@ import {
 type ProductFormProps = {
   categories: CategoryTreeNode[];
 };
-
-type ProductFormValues = z.input<typeof productCreateSchema>;
 
 function findCategoryById(categories: CategoryTreeNode[], categoryId: string): CategoryTreeNode | null {
   for (const category of categories) {
@@ -46,7 +44,7 @@ function getRootCategories(categories: CategoryTreeNode[]) {
 
 export function ProductForm({ categories }: ProductFormProps) {
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productCreateSchema),
+    resolver: zodResolver(productCreateSchema) as unknown as Resolver<ProductFormValues, any>,
     defaultValues: createEmptyProductDraft(),
     mode: "onBlur",
   });
@@ -73,23 +71,40 @@ export function ProductForm({ categories }: ProductFormProps) {
   const selectedCategory = useMemo(() => findCategoryById(categories, categoryValue), [categories, categoryValue]);
   const subcategories = selectedCategory?.children ?? [];
 
-  async function onSubmit(values: ProductFormValues) {
-    const response = await fetch("/api/products", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(values),
-    });
-
-    const payload = (await response.json()) as { success?: boolean; message?: string; error?: string };
-
-    if (!response.ok || !payload.success) {
-      throw new Error(payload.error ?? payload.message ?? "Unable to create product");
+  useEffect(() => {
+    if (!subCategoryValue) {
+      return;
     }
 
-    toast.success(payload.message ?? "Product created successfully");
-    reset(createEmptyProductDraft());
+    const isSubcategoryValid = subcategories.some((subcategory) => subcategory.id === subCategoryValue);
+
+    if (!isSubcategoryValid) {
+      setValue("subCategory", undefined, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [setValue, subCategoryValue, subcategories]);
+
+  async function onSubmit(values: ProductFormValues) {
+    try {
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      });
+
+      const payload = (await response.json()) as { success?: boolean; message?: string; error?: string };
+
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.error ?? payload.message ?? "Unable to create product");
+      }
+
+      toast.success(payload.message ?? "Product created successfully");
+      reset(createEmptyProductDraft());
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to create product";
+      toast.error(message);
+    }
   }
 
   return (
