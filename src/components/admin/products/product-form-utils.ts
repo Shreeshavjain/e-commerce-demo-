@@ -1,3 +1,4 @@
+import type { Product } from "@/types/product";
 import type { ProductColorVariantInput, ProductCreateInput, ProductMediaInput, ProductVariantOptionInput } from "@/validations/product";
 
 export type ProductDraft = ProductCreateInput;
@@ -89,4 +90,53 @@ export function normalizeMediaArray(value: ProductMediaInput[] | ProductMediaInp
   }
 
   return Array.isArray(value) ? value : [value];
+}
+
+export function createProductDraftFromProduct(product: Product): ProductDraft {
+  return {
+    title: product.title,
+    slug: product.slug,
+    description: product.description,
+    shortDescription: product.shortDescription,
+    brand: product.brand,
+    category: product.category,
+    subCategory: product.subCategory ?? undefined,
+    tags: [...product.tags],
+    thumbnail: product.thumbnail
+      ? {
+          url: product.thumbnail.url,
+          publicId: product.thumbnail.publicId,
+          altText: product.thumbnail.altText,
+          isPrimary: product.thumbnail.isPrimary,
+        }
+      : null,
+    seo: {
+      metaTitle: product.seo.metaTitle,
+      metaDescription: product.seo.metaDescription,
+      keywords: [...product.seo.keywords],
+      canonicalSlug: product.seo.canonicalSlug,
+    },
+    variants: product.variants.map((variant) => ({
+      name: variant.name,
+      hexCode: variant.hexCode,
+      variantType: variant.variantType,
+      images: variant.images.map((image) => ({
+        url: image.url,
+        publicId: image.publicId,
+        altText: image.altText,
+        isPrimary: image.isPrimary,
+      })),
+      options: variant.options.map((option) => ({
+        variantId: option.variantId,
+        label: option.label,
+        sku: option.sku,
+        price: option.price,
+        compareAtPrice: option.compareAtPrice,
+        stock: option.stock,
+        isAvailable: option.isAvailable,
+      })),
+    })),
+    isFeatured: product.isFeatured,
+    isPublished: product.isPublished,
+  };
 }

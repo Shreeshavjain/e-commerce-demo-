@@ -1,5 +1,6 @@
 import { Schema, Types, type HydratedDocument, type InferSchemaType } from "mongoose";
 import { getModel } from "@/database/model";
+import { productStatuses, type ProductStatus } from "@/models/constants";
 import { imageSchema, type ImageAsset } from "@/models/shared";
 import { calculateDiscountedPrice } from "@/server/utils/pricing";
 
@@ -48,7 +49,7 @@ const productSeoSchema = new Schema(
 const productSchema = new Schema(
   {
     title: { type: String, required: true, trim: true },
-    slug: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
+    slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     description: { type: String, required: true, trim: true },
     shortDescription: { type: String, required: true, trim: true },
     brand: { type: String, default: "", trim: true, index: true },
@@ -60,6 +61,7 @@ const productSchema = new Schema(
     variants: { type: [productColorVariantSchema], default: [] },
     isFeatured: { type: Boolean, default: false, index: true },
     isPublished: { type: Boolean, default: false, index: true },
+    status: { type: String, enum: productStatuses, default: "draft", index: true },
     ratingAverage: { type: Number, default: 0, min: 0, max: 5 },
     ratingCount: { type: Number, default: 0, min: 0 },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -114,6 +116,7 @@ export type ProductDbRecord = {
   variants: ProductColorVariant[];
   isFeatured: boolean;
   isPublished: boolean;
+  status: ProductStatus;
   ratingAverage: number;
   ratingCount: number;
   createdBy: Types.ObjectId;

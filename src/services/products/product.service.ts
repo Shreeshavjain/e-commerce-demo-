@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { connectToDatabase } from "@/database/mongoose";
 import { ProductModel, type ProductDbRecord, type ProductDocument } from "@/models/product";
+import type { ProductStatus } from "@/models/constants";
 import type { Product, ProductListFilters, ProductListResult, ProductColorVariant, ProductMedia, ProductVariantOption, ProductSeo } from "@/types/product";
 import type { ProductColorVariantInput, ProductCreateInput, ProductMediaInput, ProductVariantOptionInput, ProductSeoInput } from "@/validations/product";
 import { calculateDiscountedPrice } from "@/server/utils/pricing";
@@ -68,6 +69,14 @@ type ColorVariantDraft = {
   options: VariantOptionDraft[];
 };
 
+type NormalizedColorVariantPayload = {
+  name: string;
+  hexCode: string;
+  variantType: "size" | "storage";
+  images: ProductMedia[];
+  options: Array<Omit<VariantOptionDraft, "explicitSku">>;
+};
+
 type SerializedProductRecord = {
   _id: Types.ObjectId;
   title: string;
@@ -97,11 +106,32 @@ type SerializedProductRecord = {
   }>;
   isFeatured: boolean;
   isPublished: boolean;
+  status: ProductStatus;
   ratingAverage: number;
   ratingCount: number;
   createdBy: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type ProductWritePayload = {
+  title: string;
+  slug: string;
+  description: string;
+  shortDescription: string;
+  brand: string;
+  category: Types.ObjectId;
+  subCategory: Types.ObjectId | null;
+  tags: string[];
+  thumbnail?: ProductMedia;
+  seo: ProductSeo;
+  variants: NormalizedColorVariantPayload[];
+  isFeatured: boolean;
+  isPublished: boolean;
+  status: ProductStatus;
+  ratingAverage: number;
+  ratingCount: number;
+  createdBy: Types.ObjectId;
 };
 
 function normalizeColorVariantDraft(color: ProductColorVariantInput): ColorVariantDraft {
@@ -128,7 +158,7 @@ function normalizeColorVariantDraft(color: ProductColorVariantInput): ColorVaria
   };
 }
 
-async function findExistingVariantValues(candidateSkus: string[], candidateVariantIds: string[]) {
+async function findExistingVariantValues(candidateSkus: string[], candidateVariantIds: string[], excludedProductId?: string) {
   if (candidateSkus.length === 0 && candidateVariantIds.length === 0) {
     return {
       skus: new Set<string>(),
@@ -146,10 +176,11 @@ async function findExistingVariantValues(candidateSkus: string[], candidateVaria
     queryConditions.push({ "variants.options.variantId": { $in: candidateVariantIds } });
   }
 
-  const products = await ProductModel.find(
-    { $or: queryConditions },
-    { "variants.options.sku": 1, "variants.options.variantId": 1 }
-  ).lean<Array<{ variants?: Array<{ options?: Array<{ sku?: string; variantId?: string }> }> }>>();
+  const query = excludedProductId ? { _id: { $ne: new Types.ObjectId(excludedProductId) }, $or: queryConditions } : { $or: queryConditions };
+
+  const products = await ProductModel.find(query, { "variants.options.sku": 1, "variants.options.variantId": 1 }).lean<
+    Array<{ variants?: Array<{ options?: Array<{ sku?: string; variantId?: string }> }> }>
+  >();
 
   const skus = new Set<string>();
   const variantIds = new Set<string>();
@@ -257,18 +288,21 @@ function serializeColorVariant(color: SerializedProductRecord["variants"][number
   };
 }
 
-async function normalizeProductPayload(input: ProductCreateInput, createdBy: string) {
+async function normalizeProductPayload(
+  input: ProductCreateInput,
+  options: { createdBy: string; excludedProductId?: string; currentStatus?: ProductStatus } 
+): Promise<ProductWritePayload> {
   const baseSlug = input.slug ? slugify(input.slug) : slugify(input.title);
   const variantDrafts = input.variants.map(normalizeColorVariantDraft);
   const candidateSkus = variantDrafts.flatMap((variant) =>
     variant.options.map((option) => option.sku || buildVariantSku([input.title, variant.name, variant.variantType, option.label]))
   );
   const candidateVariantIds = variantDrafts.flatMap((variant) => variant.options.map((option) => option.variantId));
-  const { skus: existingSkus, variantIds: existingVariantIds } = await findExistingVariantValues(candidateSkus, candidateVariantIds);
+  const { skus: existingSkus, variantIds: existingVariantIds } = await findExistingVariantValues(candidateSkus, candidateVariantIds, options.excludedProductId);
   const seenSkus = new Set<string>();
   const seenVariantIds = new Set<string>();
 
-  return {
+  const normalizedPayload: ProductWritePayload = {
     title: normalizeText(input.title),
     slug: baseSlug,
     description: normalizeText(input.description),
@@ -296,18 +330,25 @@ async function normalizeProductPayload(input: ProductCreateInput, createdBy: str
     })),
     isFeatured: input.isFeatured ?? false,
     isPublished: input.isPublished ?? false,
+    status: options.currentStatus === "archived" ? "archived" : input.isPublished ? "active" : "draft",
     ratingAverage: 0,
     ratingCount: 0,
-    createdBy: new Types.ObjectId(createdBy),
+    createdBy: new Types.ObjectId(options.createdBy),
   };
+
+  return normalizedPayload;
 }
 
-async function generateUniqueSlug(baseSlug: string) {
+async function generateUniqueSlug(baseSlug: string, excludedProductId?: string) {
   const normalizedBaseSlug = baseSlug || `product-${Date.now()}`;
   let candidateSlug = normalizedBaseSlug;
   let suffix = 2;
 
-  while (await ProductModel.exists({ slug: candidateSlug })) {
+  while (
+    await ProductModel.exists(
+      excludedProductId ? { slug: candidateSlug, _id: { $ne: new Types.ObjectId(excludedProductId) } } : { slug: candidateSlug }
+    )
+  ) {
     candidateSlug = `${normalizedBaseSlug}-${suffix}`;
     suffix += 1;
   }
@@ -339,6 +380,7 @@ export function serializeProduct(product: ProductDocument): Product {
     variants: rawProduct.variants.map(serializeColorVariant),
     isFeatured: rawProduct.isFeatured,
     isPublished: rawProduct.isPublished,
+    status: rawProduct.status,
     ratingAverage: rawProduct.ratingAverage,
     ratingCount: rawProduct.ratingCount,
     createdBy: rawProduct.createdBy.toString(),
@@ -350,7 +392,7 @@ export function serializeProduct(product: ProductDocument): Product {
 export async function createProduct(input: ProductCreateInput, createdBy: string): Promise<Product> {
   await connectToDatabase();
 
-  const normalizedPayload = await normalizeProductPayload(input, createdBy);
+  const normalizedPayload = await normalizeProductPayload(input, { createdBy });
   const slug = await generateUniqueSlug(normalizedPayload.slug as string);
 
   const product = await ProductModel.create({
@@ -364,13 +406,36 @@ export async function createProduct(input: ProductCreateInput, createdBy: string
 export async function listProducts(filters: ProductListFilters = {}): Promise<ProductListResult> {
   await connectToDatabase();
 
+  return listProductsWithVisibility(filters, { includeArchived: false, defaultPublishedOnly: true });
+}
+
+export async function listAdminProducts(filters: ProductListFilters = {}): Promise<ProductListResult> {
+  await connectToDatabase();
+
+  return listProductsWithVisibility(filters, { includeArchived: true, defaultPublishedOnly: false });
+}
+
+type ListVisibilityOptions = {
+  includeArchived: boolean;
+  defaultPublishedOnly: boolean;
+};
+
+async function listProductsWithVisibility(filters: ProductListFilters, visibility: ListVisibilityOptions): Promise<ProductListResult> {
   const page = Math.max(1, filters.page ?? 1);
   const limit = Math.min(Math.max(filters.limit ?? 12, 1), 100);
   const skip = (page - 1) * limit;
 
-  const query: Record<string, unknown> & { $or?: Array<Record<string, unknown>> } = {
-    isPublished: filters.isPublished ?? true,
-  };
+  const query: Record<string, unknown> & { $or?: Array<Record<string, unknown>> } = {};
+
+  if (visibility.defaultPublishedOnly) {
+    query.isPublished = filters.isPublished ?? true;
+  } else if (typeof filters.isPublished === "boolean") {
+    query.isPublished = filters.isPublished;
+  }
+
+  if (!visibility.includeArchived) {
+    query.status = { $ne: "archived" };
+  }
 
   if (filters.category) {
     query.category = new Types.ObjectId(filters.category);
@@ -419,11 +484,65 @@ export async function listProducts(filters: ProductListFilters = {}): Promise<Pr
   };
 }
 
+export async function getAdminProductById(id: string): Promise<Product | null> {
+  await connectToDatabase();
+
+  const product = await ProductModel.findById(id);
+
+  return product ? serializeProduct(product) : null;
+}
+
+export async function updateProduct(id: string, input: ProductCreateInput): Promise<Product | null> {
+  await connectToDatabase();
+
+  const currentProduct = await ProductModel.findById(id);
+
+  if (!currentProduct) {
+    return null;
+  }
+
+  const normalizedPayload = await normalizeProductPayload(input, {
+    createdBy: currentProduct.createdBy.toString(),
+    excludedProductId: currentProduct.id,
+    currentStatus: currentProduct.status,
+  });
+  const slug = await generateUniqueSlug(normalizedPayload.slug as string, currentProduct.id);
+  const nextStatus: ProductStatus = currentProduct.status === "archived" ? "archived" : normalizedPayload.status;
+
+  currentProduct.set({
+    ...normalizedPayload,
+    slug,
+    status: nextStatus,
+    createdBy: currentProduct.createdBy,
+    ratingAverage: currentProduct.ratingAverage,
+    ratingCount: currentProduct.ratingCount,
+  });
+
+  const savedProduct = await currentProduct.save();
+  return serializeProduct(savedProduct);
+}
+
+export async function archiveProduct(id: string): Promise<Product | null> {
+  await connectToDatabase();
+
+  const product = await ProductModel.findById(id);
+
+  if (!product) {
+    return null;
+  }
+
+  product.status = "archived";
+  product.isPublished = false;
+
+  const savedProduct = await product.save();
+  return serializeProduct(savedProduct);
+}
+
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   await connectToDatabase();
 
   const normalizedSlug = slugify(slug);
-  const product = await ProductModel.findOne({ slug: normalizedSlug, isPublished: true });
+  const product = await ProductModel.findOne({ slug: normalizedSlug, isPublished: true, status: "active" });
 
   return product ? serializeProduct(product) : null;
 }

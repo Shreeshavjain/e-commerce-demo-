@@ -8,6 +8,12 @@ type FirebaseAdminCredentials = {
   privateKey: string;
 };
 
+function logFirebaseAdminLifecycle(message: string, details: Record<string, unknown>) {
+  if (process.env.NODE_ENV !== "production") {
+    console.log(message, details);
+  }
+}
+
 function getFirebaseAdminCredentials(): FirebaseAdminCredentials {
   const parsed = firebaseAdminEnvSchema.safeParse(process.env);
 
@@ -33,7 +39,7 @@ function getFirebaseAdminCredentials(): FirebaseAdminCredentials {
 // Keeping admin and client initialization separate avoids exposing service account credentials to the browser.
 export function getFirebaseAdminApp(): App {
   if (getApps().length > 0) {
-    console.error("[auth][firebase-admin] reusing initialized Firebase Admin app", {
+    logFirebaseAdminLifecycle("[auth][firebase-admin] reusing initialized Firebase Admin app", {
       stage: "get-firebase-admin-app",
       appCount: getApps().length,
       reused: true,
@@ -42,7 +48,7 @@ export function getFirebaseAdminApp(): App {
     return getApps()[0] as App;
   }
 
-  console.error("[auth][firebase-admin] initializing Firebase Admin app", {
+  logFirebaseAdminLifecycle("[auth][firebase-admin] initializing Firebase Admin app", {
     stage: "get-firebase-admin-app",
     appCount: getApps().length,
     reused: false,
@@ -56,7 +62,7 @@ export function getFirebaseAdminApp(): App {
       projectId: credentials.projectId,
     });
 
-    console.error("[auth][firebase-admin] Firebase Admin app initialized", {
+    logFirebaseAdminLifecycle("[auth][firebase-admin] Firebase Admin app initialized", {
       stage: "get-firebase-admin-app",
       appName: app.name,
     });
@@ -76,7 +82,7 @@ export function getFirebaseAdminAuth(): Auth {
   const app = getFirebaseAdminApp();
   const auth = getAuth(app);
 
-  console.error("[auth][firebase-admin] resolved Firebase Admin auth instance", {
+  logFirebaseAdminLifecycle("[auth][firebase-admin] resolved Firebase Admin auth instance", {
     stage: "get-firebase-admin-auth",
     appName: app.name,
   });

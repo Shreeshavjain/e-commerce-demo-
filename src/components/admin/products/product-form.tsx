@@ -8,12 +8,14 @@ import { Check, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { CategoryTreeNode } from "@/services/categories";
+import type { Product } from "@/types/product";
 import { productCreateSchema, type ProductCreateInput as ProductFormValues, type ProductMediaInput } from "@/validations/product";
 import { ImageUploadField } from "@/components/admin/products/image-upload-field";
 import { VariantBuilder } from "@/components/admin/products/variant-builder";
 import {
   arrayToTagsValue,
   createEmptyProductDraft,
+  createProductDraftFromProduct,
   slugifyDraftValue,
   tagsToArray,
   toMediaAltText,
@@ -21,6 +23,11 @@ import {
 
 type ProductFormProps = {
   categories: CategoryTreeNode[];
+  initialValues?: ProductFormValues;
+  mode?: "create" | "edit";
+  submitEndpoint?: string;
+  submitMethod?: "POST" | "PATCH";
+  successMessage?: string;
 };
 
 function findCategoryById(categories: CategoryTreeNode[], categoryId: string): CategoryTreeNode | null {
@@ -42,10 +49,30 @@ function getRootCategories(categories: CategoryTreeNode[]) {
   return categories;
 }
 
-export function ProductForm({ categories }: ProductFormProps) {
+function normalizeDraftValues(initialValues?: ProductFormValues | Product | null) {
+  if (!initialValues) {
+    return createEmptyProductDraft();
+  }
+
+  if ((initialValues as Product).id) {
+    return createProductDraftFromProduct(initialValues as Product);
+  }
+
+  return initialValues as ProductFormValues;
+}
+
+export function ProductForm({
+  categories,
+  initialValues,
+  mode = "create",
+  submitEndpoint = "/api/products",
+  submitMethod = "POST",
+  successMessage,
+}: ProductFormProps) {
+  const defaultValues = useMemo(() => normalizeDraftValues(initialValues), [initialValues]);
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productCreateSchema) as unknown as Resolver<ProductFormValues, any>,
-    defaultValues: createEmptyProductDraft(),
+    defaultValues,
     mode: "onBlur",
   });
 
@@ -72,6 +99,10 @@ export function ProductForm({ categories }: ProductFormProps) {
   const subcategories = selectedCategory?.children ?? [];
 
   useEffect(() => {
+    reset(defaultValues);
+  }, [defaultValues, reset]);
+
+  useEffect(() => {
     if (!subCategoryValue) {
       return;
     }
@@ -85,24 +116,30 @@ export function ProductForm({ categories }: ProductFormProps) {
 
   async function onSubmit(values: ProductFormValues) {
     try {
-      const response = await fetch("/api/products", {
-        method: "POST",
+      const response = await fetch(submitEndpoint, {
+        method: submitMethod,
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(values),
       });
 
-      const payload = (await response.json()) as { success?: boolean; message?: string; error?: string };
+      const payload = (await response.json()) as { success?: boolean; message?: string; error?: string; data?: Product };
 
       if (!response.ok || !payload.success) {
         throw new Error(payload.error ?? payload.message ?? "Unable to create product");
       }
 
-      toast.success(payload.message ?? "Product created successfully");
+      toast.success(payload.message ?? successMessage ?? (mode === "edit" ? "Product updated successfully" : "Product created successfully"));
+
+      if (mode === "edit" && payload.data) {
+        reset(createProductDraftFromProduct(payload.data));
+        return;
+      }
+
       reset(createEmptyProductDraft());
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to create product";
+      const message = error instanceof Error ? error.message : "Unable to save product";
       toast.error(message);
     }
   }
@@ -115,9 +152,11 @@ export function ProductForm({ categories }: ProductFormProps) {
             <div className="space-y-2">
               <p className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
                 <Sparkles className="h-3.5 w-3.5" />
-                Product creation workspace
+                {mode === "edit" ? "Product edit workspace" : "Product creation workspace"}
               </p>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Create a production-ready catalog product</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                {mode === "edit" ? "Edit a production-ready catalog product" : "Create a production-ready catalog product"}
+              </h1>
               <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
                 Build the product record once, then attach the thumbnail, color galleries, and final sellable options in the same flow.
               </p>
@@ -243,7 +282,7 @@ export function ProductForm({ categories }: ProductFormProps) {
             </div>
           </div>
 
-          <aside className="space-y-4 rounded-[1.5rem] border border-border bg-background/80 p-5 lg:sticky lg:top-6 lg:self-start">
+          <aside className="space-y-4 rounded-3xl border border-border bg-background/80 p-5 lg:sticky lg:top-6 lg:self-start">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Current build</p>
               <div className="mt-4 space-y-3 text-sm text-muted-foreground">
@@ -310,10 +349,10 @@ export function ProductForm({ categories }: ProductFormProps) {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <button
             type="button"
-            onClick={() => reset(createEmptyProductDraft())}
+            onClick={() => reset(defaultValues)}
             className="inline-flex items-center justify-center rounded-full border border-border px-5 py-3 text-sm font-medium transition hover:bg-secondary"
           >
-            Reset draft
+            {mode === "edit" ? "Reset changes" : "Reset draft"}
           </button>
           <button
             type="submit"
@@ -321,7 +360,7 @@ export function ProductForm({ categories }: ProductFormProps) {
             className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Create product
+            {mode === "edit" ? "Save changes" : "Create product"}
           </button>
         </div>
       </form>

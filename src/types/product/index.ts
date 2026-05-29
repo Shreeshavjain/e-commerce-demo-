@@ -1,3 +1,5 @@
+import type { ProductStatus } from "@/models/constants";
+
 export type ProductMedia = {
   url: string;
   publicId: string;
@@ -46,6 +48,7 @@ export type Product = {
   variants: ProductColorVariant[];
   isFeatured: boolean;
   isPublished: boolean;
+  status: ProductStatus;
   ratingAverage: number;
   ratingCount: number;
   createdBy: string;
