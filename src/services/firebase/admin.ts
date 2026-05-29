@@ -1,6 +1,6 @@
 import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth, type Auth } from "firebase-admin/auth";
-import { env } from "@/config/env";
+import { firebaseAdminEnvSchema } from "@/validations/env";
 
 type FirebaseAdminCredentials = {
   projectId: string;
@@ -8,28 +8,12 @@ type FirebaseAdminCredentials = {
   privateKey: string;
 };
 
-function getMissingFirebaseAdminEnvKeys() {
-  const missingKeys: string[] = [];
-
-  if (!env.FIREBASE_PROJECT_ID) {
-    missingKeys.push("FIREBASE_PROJECT_ID");
-  }
-
-  if (!env.FIREBASE_CLIENT_EMAIL) {
-    missingKeys.push("FIREBASE_CLIENT_EMAIL");
-  }
-
-  if (!env.FIREBASE_PRIVATE_KEY) {
-    missingKeys.push("FIREBASE_PRIVATE_KEY");
-  }
-
-  return missingKeys;
-}
-
 function getFirebaseAdminCredentials(): FirebaseAdminCredentials {
-  const missingKeys = getMissingFirebaseAdminEnvKeys();
+  const parsed = firebaseAdminEnvSchema.safeParse(process.env);
 
-  if (missingKeys.length > 0) {
+  if (!parsed.success) {
+    const missingKeys = Object.keys(parsed.error.flatten().fieldErrors);
+
     console.error("[auth][firebase-admin] missing required admin env vars", {
       stage: "get-firebase-admin-credentials",
       missingKeys,
@@ -39,9 +23,9 @@ function getFirebaseAdminCredentials(): FirebaseAdminCredentials {
   }
 
   return {
-    projectId: env.FIREBASE_PROJECT_ID,
-    clientEmail: env.FIREBASE_CLIENT_EMAIL,
-    privateKey: env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    projectId: parsed.data.FIREBASE_PROJECT_ID,
+    clientEmail: parsed.data.FIREBASE_CLIENT_EMAIL,
+    privateKey: parsed.data.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
   };
 }
 
