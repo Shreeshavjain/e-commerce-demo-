@@ -15,9 +15,13 @@ const categorySchema = new Schema(
     sortOrder: { type: Number, default: 0 },
   },
   {
+    collection: "categories",
     timestamps: true,
   }
 );
+
+categorySchema.index({ parentCategory: 1, sortOrder: 1, name: 1 });
+categorySchema.index({ isActive: 1, status: 1, sortOrder: 1, name: 1 });
 
 export type Category = InferSchemaType<typeof categorySchema> & {
   status: CategoryStatus;
