@@ -1,7 +1,10 @@
 import Link from "next/link";
 import CategoryForm from "@/components/admin/categories/category-form";
+import { listCategoryTree } from "@/services/categories";
 
-export default function NewCategoryPage() {
+export default async function NewCategoryPage() {
+  const parentCategories = await listCategoryTree();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -12,7 +15,7 @@ export default function NewCategoryPage() {
       </div>
 
       <section className="rounded-lg border p-6">
-        <CategoryForm />
+        <CategoryForm parentCategories={parentCategories} />
       </section>
     </div>
   );

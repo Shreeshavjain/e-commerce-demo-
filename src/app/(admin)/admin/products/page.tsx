@@ -44,7 +44,11 @@ function getStatusLabel(product: Product) {
     return "Archived";
   }
 
-  return product.isPublished ? "Published" : "Draft";
+  if (product.status === "active" && product.isPublished) {
+    return "Active";
+  }
+
+  return "Draft";
 }
 
 function buildPageHref(searchTerm: string, page: number) {
@@ -212,7 +216,8 @@ export default async function AdminProductsPage({ searchParams }: AdminProductsP
                           <ProductRowActions
                             editHref={`/admin/products/${product.id}/edit`}
                             productId={product.id}
-                            isArchived={product.status === "archived"}
+                            status={product.status}
+                            isPublished={product.isPublished}
                           />
                         </div>
                       </div>

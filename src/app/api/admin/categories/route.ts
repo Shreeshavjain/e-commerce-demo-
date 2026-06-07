@@ -32,7 +32,20 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json().catch(() => null);
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[categories][api] POST request body", body);
+  }
+
   const parsed = categoryCreateSchema.safeParse(body);
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[categories][api] validation result", {
+      success: parsed.success,
+      data: parsed.success ? parsed.data : undefined,
+      error: parsed.success ? undefined : parsed.error.flatten(),
+    });
+  }
 
   if (!parsed.success) {
     return NextResponse.json(createErrorResponse("Invalid payload", parsed.error.message), { status: 400 });
@@ -40,9 +53,19 @@ export async function POST(request: Request) {
 
   try {
     const created = await createCategory(parsed.data);
-    return NextResponse.json(createSuccessResponse(created, "Category created"));
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[categories][api] createCategory result", created);
+    }
+
+    return NextResponse.json(createSuccessResponse(created, "Category created successfully"));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to create category";
+
+    if (process.env.NODE_ENV === "development") {
+      console.error("[categories][api] createCategory failed", message);
+    }
+
     return NextResponse.json(createErrorResponse("Failed to create category", message), { status: 500 });
   }
 }

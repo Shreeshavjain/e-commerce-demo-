@@ -1,15 +1,70 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import type { CategoryDetail } from "@/services/categories";
+import type { CategoryDetail, CategoryTreeNode } from "@/services/categories";
+
+type ParentOption = {
+  id: string;
+  name: string;
+};
 
 type Props = {
   initialData?: CategoryDetail | null;
+  parentCategories: CategoryTreeNode[];
 };
 
-export default function CategoryForm({ initialData = null }: Props) {
+function findCategoryNode(nodes: CategoryTreeNode[], categoryId: string): CategoryTreeNode | null {
+  for (const node of nodes) {
+    if (node.id === categoryId) {
+      return node;
+    }
+
+    const childMatch = findCategoryNode(node.children, categoryId);
+    if (childMatch) {
+      return childMatch;
+    }
+  }
+
+  return null;
+}
+
+function collectDescendantIds(node: CategoryTreeNode): Set<string> {
+  const ids = new Set<string>([node.id]);
+
+  for (const child of node.children) {
+    for (const childId of collectDescendantIds(child)) {
+      ids.add(childId);
+    }
+  }
+
+  return ids;
+}
+
+function flattenCategoryTree(
+  nodes: CategoryTreeNode[],
+  excludedIds: Set<string> = new Set(),
+  prefix = ""
+): ParentOption[] {
+  const options: ParentOption[] = [];
+
+  for (const node of nodes) {
+    if (excludedIds.has(node.id)) {
+      continue;
+    }
+
+    options.push({ id: node.id, name: `${prefix}${node.name}` });
+
+    if (node.children.length > 0) {
+      options.push(...flattenCategoryTree(node.children, excludedIds, `${prefix}${node.name} > `));
+    }
+  }
+
+  return options;
+}
+
+export default function CategoryForm({ initialData = null, parentCategories }: Props) {
   const router = useRouter();
   const [name, setName] = useState(initialData?.name ?? "");
   const [slug, setSlug] = useState(initialData?.slug ?? "");
@@ -17,59 +72,84 @@ export default function CategoryForm({ initialData = null }: Props) {
   const [parentCategoryId, setParentCategoryId] = useState<string | undefined>(initialData?.parentCategoryId ?? undefined);
   const [sortOrder, setSortOrder] = useState<number>(initialData?.sortOrder ?? 0);
   const [isActive, setIsActive] = useState<boolean>(initialData?.isActive ?? true);
-  const [parentOptions, setParentOptions] = useState<Array<{ id: string; name: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    // load parent category options (flat list)
-    async function load() {
-      try {
-        const res = await fetch(`/api/admin/categories`);
-        const payload = await res.json().catch(() => null);
-        if (!res.ok || !payload?.success) return;
-        const items = payload.data; // tree
+  const parentOptions = useMemo(() => {
+    const excludedIds = new Set<string>();
 
-        // flatten to simple options (id, name) using DFS
-        const options: Array<{ id: string; name: string }> = [];
-
-        function walk(nodes: any[], prefix = "") {
-          for (const node of nodes) {
-            options.push({ id: node.id, name: `${prefix}${node.name}` });
-            if (node.children && node.children.length) {
-              walk(node.children, `${prefix}${node.name} > `);
-            }
-          }
+    if (initialData?.id) {
+      const currentNode = findCategoryNode(parentCategories, initialData.id);
+      if (currentNode) {
+        for (const id of collectDescendantIds(currentNode)) {
+          excludedIds.add(id);
         }
-
-        walk(items);
-        setParentOptions(options);
-      } catch (err) {
-        // ignore
+      } else {
+        excludedIds.add(initialData.id);
       }
     }
 
-    load();
-  }, []);
+    const options = flattenCategoryTree(parentCategories, excludedIds);
 
-  async function handleCreate(e: React.FormEvent) {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[categories][form] parent options built", {
+        treeCount: parentCategories.length,
+        optionCount: options.length,
+        excludedIds: [...excludedIds],
+      });
+    }
+
+    return options;
+  }, [initialData?.id, parentCategories]);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
 
+    const isEditMode = Boolean(initialData?.id);
+    const requestUrl = isEditMode ? `/api/admin/categories/${initialData?.id}` : "/api/admin/categories";
+    const requestMethod = isEditMode ? "PATCH" : "POST";
+    const payload = {
+      name,
+      slug: slug.trim() || undefined,
+      description,
+      parentCategory: parentCategoryId ?? undefined,
+      sortOrder,
+      isActive,
+    };
+
+    if (process.env.NODE_ENV === "development") {
+      console.log("[categories][form] submit", {
+        requestUrl,
+        requestMethod,
+        payload,
+      });
+    }
+
     try {
-      const payload = { name, slug, description, parentCategory: parentCategoryId ?? undefined, sortOrder, isActive };
-      const res = await fetch(`/api/admin/categories`, {
-        method: initialData ? "PATCH" : "POST",
+      const res = await fetch(requestUrl, {
+        method: requestMethod,
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       const body = await res.json().catch(() => null);
 
+      if (process.env.NODE_ENV === "development") {
+        console.log("[categories][form] response", {
+          requestUrl,
+          status: res.status,
+          success: body?.success,
+          message: body?.message,
+          error: body?.error,
+        });
+      }
+
       if (!res.ok || !body?.success) {
         throw new Error(body?.error ?? body?.message ?? "Unable to save category");
       }
 
-      toast.success(body.message ?? (initialData ? "Category updated" : "Category created"));
+      toast.success(body.message ?? (isEditMode ? "Category updated successfully" : "Category created successfully"));
       router.push("/admin/categories");
       router.refresh();
     } catch (err) {
@@ -81,7 +161,7 @@ export default function CategoryForm({ initialData = null }: Props) {
   }
 
   return (
-    <form onSubmit={handleCreate} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <label className="space-y-1">
           <div className="text-xs font-medium uppercase text-muted-foreground">Name</div>
@@ -90,7 +170,12 @@ export default function CategoryForm({ initialData = null }: Props) {
 
         <label className="space-y-1">
           <div className="text-xs font-medium uppercase text-muted-foreground">Slug</div>
-          <input value={slug} onChange={(e) => setSlug(e.target.value)} className="w-full rounded-2xl border bg-background px-4 py-3 text-sm" />
+          <input
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+            placeholder="Auto-generated from name when left empty"
+            className="w-full rounded-2xl border bg-background px-4 py-3 text-sm"
+          />
         </label>
       </div>
 
@@ -104,9 +189,9 @@ export default function CategoryForm({ initialData = null }: Props) {
           <div className="text-xs font-medium uppercase text-muted-foreground">Parent Category</div>
           <select value={parentCategoryId ?? ""} onChange={(e) => setParentCategoryId(e.target.value || undefined)} className="w-full rounded-2xl border bg-background px-4 py-3 text-sm">
             <option value="">None</option>
-            {parentOptions.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
+            {parentOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
               </option>
             ))}
           </select>
@@ -128,7 +213,7 @@ export default function CategoryForm({ initialData = null }: Props) {
           {isSubmitting ? "Saving..." : initialData ? "Update Category" : "Create Category"}
         </button>
 
-        <button type="button" onClick={() => { router.push('/admin/categories'); }} className="rounded-full border px-4 py-2 text-sm hover:bg-secondary">
+        <button type="button" onClick={() => { router.push("/admin/categories"); }} className="rounded-full border px-4 py-2 text-sm hover:bg-secondary">
           Cancel
         </button>
       </div>

@@ -2,12 +2,25 @@ import { NextResponse } from "next/server";
 import { getCurrentAuthenticatedUser } from "@/server/auth/current-user";
 import { isStaffOrAbove } from "@/server/auth/role-guards";
 import { createErrorResponse, createSuccessResponse } from "@/server/utils/api-response";
-import { archiveProduct, updateProduct } from "@/services/products";
-import { productCreateSchema } from "@/validations/product";
+import {
+  archiveProduct,
+  publishProduct,
+  restoreProduct,
+  unpublishProduct,
+  updateProduct,
+} from "@/services/products";
+import { productCreateSchema, productPublicationActionSchema } from "@/validations/product";
 
 type RouteParams = {
   params: Promise<{ id: string }>;
 };
+
+const publicationActionMessages = {
+  publish: "Product published",
+  unpublish: "Product unpublished",
+  archive: "Product archived",
+  restore: "Product restored",
+} as const;
 
 async function ensureAdminAccess() {
   const currentUser = await getCurrentAuthenticatedUser();
@@ -38,6 +51,31 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 
   const body = await request.json().catch(() => null);
+  const publicationAction = productPublicationActionSchema.safeParse(body);
+
+  if (publicationAction.success) {
+    try {
+      const action = publicationAction.data.action;
+      const product =
+        action === "publish"
+          ? await publishProduct(productId)
+          : action === "unpublish"
+            ? await unpublishProduct(productId)
+            : action === "archive"
+              ? await archiveProduct(productId)
+              : await restoreProduct(productId);
+
+      if (!product) {
+        return NextResponse.json(createErrorResponse("Product not found"), { status: 404 });
+      }
+
+      return NextResponse.json(createSuccessResponse(product, publicationActionMessages[action]));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to update product status";
+      return NextResponse.json(createErrorResponse("Failed to update product status", message), { status: 500 });
+    }
+  }
+
   const parsedBody = productCreateSchema.safeParse(body);
 
   if (!parsedBody.success) {
@@ -79,7 +117,7 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
       return NextResponse.json(createErrorResponse("Product not found"), { status: 404 });
     }
 
-    return NextResponse.json(createSuccessResponse(product, "Product archived successfully"));
+    return NextResponse.json(createSuccessResponse(product, "Product archived"));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to archive product";
     return NextResponse.json(createErrorResponse("Failed to archive product", message), { status: 500 });

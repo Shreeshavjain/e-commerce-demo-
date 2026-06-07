@@ -522,6 +522,38 @@ export async function updateProduct(id: string, input: ProductCreateInput): Prom
   return serializeProduct(savedProduct);
 }
 
+export async function publishProduct(id: string): Promise<Product | null> {
+  await connectToDatabase();
+
+  const product = await ProductModel.findById(id);
+
+  if (!product) {
+    return null;
+  }
+
+  product.isPublished = true;
+  product.status = "active";
+
+  const savedProduct = await product.save();
+  return serializeProduct(savedProduct);
+}
+
+export async function unpublishProduct(id: string): Promise<Product | null> {
+  await connectToDatabase();
+
+  const product = await ProductModel.findById(id);
+
+  if (!product) {
+    return null;
+  }
+
+  product.isPublished = false;
+  product.status = "draft";
+
+  const savedProduct = await product.save();
+  return serializeProduct(savedProduct);
+}
+
 export async function archiveProduct(id: string): Promise<Product | null> {
   await connectToDatabase();
 
@@ -533,6 +565,22 @@ export async function archiveProduct(id: string): Promise<Product | null> {
 
   product.status = "archived";
   product.isPublished = false;
+
+  const savedProduct = await product.save();
+  return serializeProduct(savedProduct);
+}
+
+export async function restoreProduct(id: string): Promise<Product | null> {
+  await connectToDatabase();
+
+  const product = await ProductModel.findById(id);
+
+  if (!product) {
+    return null;
+  }
+
+  product.isPublished = false;
+  product.status = "draft";
 
   const savedProduct = await product.save();
   return serializeProduct(savedProduct);

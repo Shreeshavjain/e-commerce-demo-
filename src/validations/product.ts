@@ -94,6 +94,10 @@ export const productCreateSchema = z
     });
   });
 
+export const productPublicationActionSchema = z.object({
+  action: z.enum(["publish", "unpublish", "archive", "restore"]),
+});
+
 export const productListQuerySchema = z.object({
   search: optionalString,
   category: optionalObjectIdString,
@@ -107,6 +111,7 @@ export const productListQuerySchema = z.object({
   sortOrder: z.enum(["asc", "desc"]).default("desc").optional(),
 });
 
+export type ProductPublicationAction = z.infer<typeof productPublicationActionSchema>;
 export type ProductCreateInput = z.infer<typeof productCreateSchema>;
 export type ProductListQuery = z.infer<typeof productListQuerySchema>;
 export type ProductMediaInput = z.infer<typeof productMediaSchema>;

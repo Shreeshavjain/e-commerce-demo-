@@ -1,15 +1,20 @@
-import { getCategoryById } from "@/services/categories";
-import dynamic from "next/dynamic";
 import Link from "next/link";
+import CategoryForm from "@/components/admin/categories/category-form";
+import { getCategoryById, listCategoryTree } from "@/services/categories";
 
-const CategoryForm = dynamic(() => import("@/components/admin/categories/category-form"), { ssr: false });
-
-type Props = {
-  params: { id: string };
+type EditCategoryPageProps = {
+  params: Promise<{ id: string }>;
 };
 
-export default async function EditCategoryPage({ params }: Props) {
-  const category = await getCategoryById(params.id);
+export default async function EditCategoryPage({ params }: EditCategoryPageProps) {
+  const resolvedParams = await params;
+  const categoryId = resolvedParams.id?.trim();
+
+  if (!categoryId) {
+    return <div>Category not found</div>;
+  }
+
+  const [category, parentCategories] = await Promise.all([getCategoryById(categoryId), listCategoryTree()]);
 
   if (!category) {
     return <div>Category not found</div>;
@@ -25,8 +30,7 @@ export default async function EditCategoryPage({ params }: Props) {
       </div>
 
       <section className="rounded-lg border p-6">
-        {/* CategoryForm will detect edit mode when initialData prop is present */}
-        <CategoryForm initialData={category} />
+        <CategoryForm initialData={category} parentCategories={parentCategories} />
       </section>
     </div>
   );

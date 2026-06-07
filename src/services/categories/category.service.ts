@@ -305,6 +305,17 @@ export async function createCategory(input: CategoryCreateInput) {
   const slug = await generateUniqueSlug(input.slug || input.name);
   const parentCategoryId = input.parentCategory ?? null;
 
+  if (process.env.NODE_ENV === "development") {
+    console.log("[categories][service] createCategory input", {
+      name: input.name,
+      slug: input.slug,
+      resolvedSlugBase: input.slug || input.name,
+      parentCategoryId,
+      sortOrder: input.sortOrder,
+      isActive: input.isActive,
+    });
+  }
+
   if (parentCategoryId) {
     await validateParentCategory(parentCategoryId);
   }
@@ -319,6 +330,15 @@ export async function createCategory(input: CategoryCreateInput) {
     isActive: input.isActive ?? true,
     status: input.isActive === false ? "inactive" : "active",
   });
+
+  if (process.env.NODE_ENV === "development") {
+    console.log("[categories][service] MongoDB create result", {
+      id: category._id.toString(),
+      name: category.name,
+      slug: category.slug,
+      parentCategory: category.parentCategory?.toString() ?? null,
+    });
+  }
 
   return getCategoryById(category._id.toString());
 }
