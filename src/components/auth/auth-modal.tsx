@@ -33,36 +33,8 @@ function stepMeta(step: "phone" | "otp" | "name") {
 export function AuthModal({ isReady }: AuthModalProps) {
   const { isAuthModalOpen, step, error, infoMessage, pendingPhoneNumber, status } = useAuthState();
   const { closeAuthModal, backToPhoneStep, requestOtp, verifyOtp, completeName, clearAuthMessage } = useAuthActions();
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [otpCode, setOtpCode] = useState("");
-  const [displayName, setDisplayName] = useState("");
-
   const isBusy = status === "authenticating";
   const meta = useMemo(() => stepMeta(step), [step]);
-
-  useEffect(() => {
-    if (!isAuthModalOpen) {
-      setPhoneNumber("");
-      setOtpCode("");
-      setDisplayName("");
-      return;
-    }
-
-    if (step === "phone") {
-      setPhoneNumber(pendingPhoneNumber);
-      setOtpCode("");
-      setDisplayName("");
-    }
-
-    if (step === "otp") {
-      setPhoneNumber(pendingPhoneNumber);
-      setOtpCode("");
-    }
-
-    if (step === "name") {
-      setDisplayName("");
-    }
-  }, [isAuthModalOpen, pendingPhoneNumber, step]);
 
   useEffect(() => {
     if (!isAuthModalOpen) {
@@ -84,31 +56,83 @@ export function AuthModal({ isReady }: AuthModalProps) {
   }
 
   return (
-    <AnimatePresence>
-      {isAuthModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 py-4 sm:items-center">
-          <motion.button
-            aria-label="Close authentication dialog"
-            className="absolute inset-0 cursor-default bg-black/45 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            type="button"
-            onClick={closeAuthModal}
-          />
+    <AuthModalSheet
+      key={`${step}:${pendingPhoneNumber}`}
+      isReady={isReady}
+      step={step}
+      pendingPhoneNumber={pendingPhoneNumber}
+      closeAuthModal={closeAuthModal}
+      backToPhoneStep={backToPhoneStep}
+      requestOtp={requestOtp}
+      verifyOtp={verifyOtp}
+      completeName={completeName}
+      clearAuthMessage={clearAuthMessage}
+      meta={meta}
+      isBusy={isBusy}
+      error={error}
+      infoMessage={infoMessage}
+    />
+  );
+}
 
-          <motion.section
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="auth-modal-title"
-            aria-describedby="auth-modal-description"
-            className="relative z-10 w-full max-w-md overflow-hidden rounded-[2rem] border border-border/70 bg-card/95 p-5 shadow-[0_28px_80px_-34px_rgba(15,23,42,0.55)] backdrop-blur-xl sm:p-6"
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 16, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24 }}
-          >
-            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400 via-cyan-400 to-emerald-400" />
+function AuthModalSheet({
+  isReady,
+  step,
+  pendingPhoneNumber,
+  closeAuthModal,
+  backToPhoneStep,
+  requestOtp,
+  verifyOtp,
+  completeName,
+  clearAuthMessage,
+  meta,
+  isBusy,
+  error,
+  infoMessage,
+}: {
+  isReady: boolean;
+  step: "phone" | "otp" | "name";
+  pendingPhoneNumber: string;
+  closeAuthModal: () => void;
+  backToPhoneStep: () => void;
+  requestOtp: (phoneNumber: string) => Promise<void>;
+  verifyOtp: (code: string) => Promise<{ needsName: boolean }>;
+  completeName: (displayName: string) => Promise<void>;
+  clearAuthMessage: () => void;
+  meta: ReturnType<typeof stepMeta>;
+  isBusy: boolean;
+  error: string | null;
+  infoMessage: string | null;
+}) {
+  const [phoneNumber, setPhoneNumber] = useState(() => (step === "phone" || step === "otp" ? pendingPhoneNumber : ""));
+  const [otpCode, setOtpCode] = useState("");
+  const [displayName, setDisplayName] = useState("");
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-end justify-center px-4 py-4 sm:items-center">
+        <motion.button
+          aria-label="Close authentication dialog"
+          className="absolute inset-0 cursor-default bg-black/45 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          type="button"
+          onClick={closeAuthModal}
+        />
+
+        <motion.section
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="auth-modal-title"
+          aria-describedby="auth-modal-description"
+          className="relative z-10 w-full max-w-md overflow-hidden rounded-[2rem] border border-border/70 bg-card/95 p-5 shadow-[0_28px_80px_-34px_rgba(15,23,42,0.55)] backdrop-blur-xl sm:p-6"
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 16, scale: 0.98 }}
+          transition={{ type: "spring", stiffness: 260, damping: 24 }}
+        >
+          <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-sky-400 via-cyan-400 to-emerald-400" />
 
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -278,20 +302,19 @@ export function AuthModal({ isReady }: AuthModalProps) {
               ) : null}
             </div>
 
-            <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border/60 pt-4 text-xs text-muted-foreground">
-              <span className="inline-flex items-center gap-2 rounded-full bg-background/80 px-3 py-1">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Backend session cookie
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-background/80 px-3 py-1">
-                Firebase OTP on the client
-              </span>
-            </div>
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border/60 pt-4 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-2 rounded-full bg-background/80 px-3 py-1">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Backend session cookie
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-background/80 px-3 py-1">
+              Firebase OTP on the client
+            </span>
+          </div>
 
-            <div id="auth-recaptcha-container" className="sr-only" />
-          </motion.section>
-        </div>
-      ) : null}
+          <div id="auth-recaptcha-container" className="sr-only" />
+        </motion.section>
+      </div>
     </AnimatePresence>
   );
 }

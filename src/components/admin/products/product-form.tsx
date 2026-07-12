@@ -71,7 +71,7 @@ export function ProductForm({
 }: ProductFormProps) {
   const defaultValues = useMemo(() => normalizeDraftValues(initialValues), [initialValues]);
   const form = useForm<ProductFormValues>({
-    resolver: zodResolver(productCreateSchema) as unknown as Resolver<ProductFormValues, any>,
+    resolver: zodResolver(productCreateSchema) as unknown as Resolver<ProductFormValues, unknown>,
     defaultValues,
     mode: "onBlur",
   });

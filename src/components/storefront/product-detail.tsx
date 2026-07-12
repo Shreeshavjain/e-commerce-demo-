@@ -3,8 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { ArrowLeft, ImageIcon } from "lucide-react";
+import { ArrowLeft, ImageIcon, ShoppingCart } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { calculateDiscountedPrice } from "@/server/utils/pricing";
+import { useCartStore } from "@/stores/cart-store";
 import type { Product } from "@/types/product";
 import {
   formatPrice,
@@ -19,11 +22,14 @@ type ProductDetailProps = {
 
 export function ProductDetail({ product }: ProductDetailProps) {
   const [selectedVariantIndex, setSelectedVariantIndex] = useState(0);
+  const [selectedOptionIndex, setSelectedOptionIndex] = useState(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const addItem = useCartStore((state) => state.addItem);
 
   const priceRange = getProductPriceRange(product);
   const thumbnailFallback = getThumbnailFallback(product);
   const selectedVariant = product.variants[selectedVariantIndex] ?? product.variants[0];
+  const selectedOption = selectedVariant?.options[selectedOptionIndex] ?? selectedVariant?.options[0];
   const variantImages = selectedVariant
     ? getVariantImages(selectedVariant, product.title, thumbnailFallback)
     : thumbnailFallback
@@ -33,7 +39,42 @@ export function ProductDetail({ product }: ProductDetailProps) {
 
   function handleVariantSelect(index: number) {
     setSelectedVariantIndex(index);
+    setSelectedOptionIndex(0);
     setSelectedImageIndex(0);
+  }
+
+  function handleOptionSelect(index: number) {
+    setSelectedOptionIndex(index);
+  }
+
+  function handleAddToCart() {
+    if (!selectedVariant || !selectedOption) {
+      return;
+    }
+
+    addItem({
+      productId: product.id,
+      productSlug: product.slug,
+      productTitle: product.title,
+      productBrand: product.brand,
+      productImage: product.thumbnail
+        ? {
+            url: product.thumbnail.url,
+            altText: product.thumbnail.altText || product.title,
+          }
+        : null,
+      variantId: selectedOption.variantId,
+      variantLabel: selectedOption.label,
+      variantName: selectedVariant.name,
+      quantity: 1,
+      price: {
+        unitPrice: selectedOption.price,
+        compareAtPrice: selectedOption.compareAtPrice,
+        discountedPrice: selectedOption.discountedPrice ?? calculateDiscountedPrice(selectedOption.price, selectedOption.compareAtPrice),
+      },
+    });
+
+    toast.success("Added to cart");
   }
 
   return (
@@ -120,8 +161,18 @@ export function ProductDetail({ product }: ProductDetailProps) {
               </h2>
 
               <div className="grid gap-2 sm:grid-cols-2">
-                {selectedVariant.options.map((option) => (
-                  <div key={option.variantId} className="rounded-2xl border border-border bg-background px-4 py-3">
+                {selectedVariant.options.map((option, index) => (
+                  <button
+                    key={option.variantId}
+                    type="button"
+                    onClick={() => handleOptionSelect(index)}
+                    className={cn(
+                      "rounded-2xl border px-4 py-3 text-left transition",
+                      selectedOption?.variantId === option.variantId
+                        ? "border-primary bg-primary/10"
+                        : "border-border bg-background hover:border-primary/40"
+                    )}
+                  >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-medium text-foreground">{option.label}</p>
@@ -137,11 +188,39 @@ export function ProductDetail({ product }: ProductDetailProps) {
                         ) : null}
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </div>
           ) : null}
+
+          <div className="rounded-[1.5rem] border border-border bg-card/70 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Selected variant</p>
+                <p className="mt-2 text-base font-medium text-foreground">
+                  {selectedVariant?.name ?? "Select a color"}
+                  {selectedOption ? ` · ${selectedOption.label}` : ""}
+                </p>
+                {selectedOption ? <p className="mt-1 text-sm text-muted-foreground">{formatPrice(selectedOption.price)}</p> : null}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={!selectedVariant || !selectedOption || !selectedOption.isAvailable || selectedOption.stock <= 0}
+                className={cn(
+                  "inline-flex items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition",
+                  !selectedVariant || !selectedOption || !selectedOption.isAvailable || selectedOption.stock <= 0
+                    ? "cursor-not-allowed bg-muted text-muted-foreground"
+                    : "bg-foreground text-background hover:opacity-90"
+                )}
+              >
+                <ShoppingCart className="h-4 w-4" />
+                Add to Cart
+              </button>
+            </div>
+          </div>
 
           {product.description ? (
             <div className="space-y-3 rounded-[1.5rem] border border-border bg-card/70 p-5">

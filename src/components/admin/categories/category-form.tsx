@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import type { CategoryDetail, CategoryTreeNode } from "@/services/categories";
@@ -74,7 +74,7 @@ export default function CategoryForm({ initialData = null, parentCategories }: P
   const [isActive, setIsActive] = useState<boolean>(initialData?.isActive ?? true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const parentOptions = useMemo(() => {
+  const parentOptions = (() => {
     const excludedIds = new Set<string>();
 
     if (initialData?.id) {
@@ -99,7 +99,7 @@ export default function CategoryForm({ initialData = null, parentCategories }: P
     }
 
     return options;
-  }, [initialData?.id, parentCategories]);
+  })();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
