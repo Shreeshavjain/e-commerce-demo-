@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { calculateDiscountedPrice } from "@/server/utils/pricing";
-import { clearCartStorage, createCartStorage, getCartStorageKey } from "@/lib/cart/storage";
+import { clearCartStorage, createCartStorage, getCartStorageKey, readCartStorage } from "@/lib/cart/storage";
 import type { CartItem, CartItemInput, CartState } from "@/types/cart";
 
 function clampQuantity(quantity: number | undefined) {
@@ -216,3 +216,43 @@ export const useCartStore = create<CartState>()(
     }
   )
 );
+
+export function syncCartWithAuth(isLoggedIn: boolean) {
+  const state = useCartStore.getState();
+  const nextScope = isLoggedIn ? "user" : "guest";
+
+  if (state.scope === nextScope) {
+    return;
+  }
+
+  if (isLoggedIn) {
+    const guestItems = [...state.items];
+
+    useCartStore.persist.setOptions({
+      name: getCartStorageKey("user"),
+    });
+
+    const userState = readCartStorage("user");
+    let mergedItems = userState ? [...userState.items] : [];
+
+    guestItems.forEach((guestItem) => {
+      mergedItems = addOrMergeItem(mergedItems, guestItem);
+    });
+
+    useCartStore.setState({
+      scope: "user",
+      items: mergedItems,
+    });
+
+    clearCartStorage("guest");
+  } else {
+    useCartStore.persist.setOptions({
+      name: getCartStorageKey("guest"),
+    });
+
+    useCartStore.setState({
+      scope: "guest",
+      items: [],
+    });
+  }
+}

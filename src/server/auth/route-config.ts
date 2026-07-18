@@ -1,6 +1,6 @@
 export const AUTH_SESSION_COOKIE_NAME = "__session";
 
-export const customerProtectedRoutes = ["/account", "/checkout", "/orders"] as const;
+export const customerProtectedRoutes = ["/account", "/orders"] as const;
 export const adminProtectedRoutes = ["/admin"] as const;
 
 export function isPathProtected(pathname: string, routes: readonly string[]) {

@@ -22,7 +22,8 @@ type AuthStoreState = {
   pendingPhoneNumber: string;
   pendingVerificationId: string | null;
   pendingIdToken: string | null;
-  openAuthModal: (step?: AuthStep) => void;
+  redirectAfterAuth: string | null;
+  openAuthModal: (step?: AuthStep, redirectAfterAuth?: string) => void;
   closeAuthModal: () => void;
   backToPhoneStep: () => void;
   clearAuthMessage: () => void;
@@ -68,16 +69,18 @@ const initialState = {
   pendingPhoneNumber: "",
   pendingVerificationId: null,
   pendingIdToken: null,
+  redirectAfterAuth: null as string | null,
 };
 
 export const useAuthStore = create<AuthStoreState>((set, get) => ({
   ...initialState,
-  openAuthModal: (step = "phone") => {
+  openAuthModal: (step = "phone", redirectAfterAuth) => {
     set({
       isAuthModalOpen: true,
       step,
       error: null,
       infoMessage: null,
+      ...(redirectAfterAuth !== undefined ? { redirectAfterAuth } : {}),
     });
   },
   closeAuthModal: () => {
@@ -89,6 +92,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       pendingPhoneNumber: "",
       pendingVerificationId: null,
       pendingIdToken: null,
+      redirectAfterAuth: null,
     });
   },
   backToPhoneStep: () => {
@@ -225,6 +229,8 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       await signOut(auth).catch(() => undefined);
       clearRecaptchaVerifier();
 
+      const redirectPath = get().redirectAfterAuth;
+
       set({
         user: response.user,
         status: "authenticated",
@@ -235,9 +241,15 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         pendingPhoneNumber: "",
         pendingVerificationId: null,
         pendingIdToken: null,
+        redirectAfterAuth: null,
       });
 
       toast.success(response.message);
+
+      if (redirectPath) {
+        window.location.href = redirectPath;
+      }
+
       return { needsName: false };
     } catch (error) {
       const message = getErrorMessage(error);
@@ -284,6 +296,8 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
       await signOut(getFirebaseClientAuth()).catch(() => undefined);
       clearRecaptchaVerifier();
 
+      const redirectPath = get().redirectAfterAuth;
+
       set({
         user: response.user,
         status: "authenticated",
@@ -294,9 +308,14 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         pendingPhoneNumber: "",
         pendingVerificationId: null,
         pendingIdToken: null,
+        redirectAfterAuth: null,
       });
 
       toast.success(response.message);
+
+      if (redirectPath) {
+        window.location.href = redirectPath;
+      }
     } catch (error) {
       const message = getErrorMessage(error);
 
@@ -331,6 +350,7 @@ export const useAuthStore = create<AuthStoreState>((set, get) => ({
         pendingPhoneNumber: "",
         pendingVerificationId: null,
         pendingIdToken: null,
+        redirectAfterAuth: null,
       });
 
       toast.success("Signed out successfully");

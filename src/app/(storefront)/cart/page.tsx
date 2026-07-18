@@ -239,13 +239,20 @@ export default function CartPage() {
             </div>
 
             <Link
-              href="/products"
+              href="/checkout"
               className={cn(
                 "mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90"
               )}
             >
-              Continue Shopping
+              Checkout
               <ArrowRight className="h-4 w-4" />
+            </Link>
+
+            <Link
+              href="/products"
+              className="mt-4 block text-center text-sm font-medium text-muted-foreground transition hover:text-foreground"
+            >
+              Continue Shopping
             </Link>
           </aside>
         </div>

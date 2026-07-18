@@ -51,31 +51,32 @@ export function AuthModal({ isReady }: AuthModalProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [closeAuthModal, isAuthModalOpen]);
 
-  if (!isAuthModalOpen) {
-    return <div id="auth-recaptcha-container" className="sr-only" />;
-  }
-
   return (
-    <AuthModalSheet
-      key={`${step}:${pendingPhoneNumber}`}
-      isReady={isReady}
-      step={step}
-      pendingPhoneNumber={pendingPhoneNumber}
-      closeAuthModal={closeAuthModal}
-      backToPhoneStep={backToPhoneStep}
-      requestOtp={requestOtp}
-      verifyOtp={verifyOtp}
-      completeName={completeName}
-      clearAuthMessage={clearAuthMessage}
-      meta={meta}
-      isBusy={isBusy}
-      error={error}
-      infoMessage={infoMessage}
-    />
+    <>
+      <div id="auth-recaptcha-container" className="sr-only" />
+      <AuthModalSheet
+        isAuthModalOpen={isAuthModalOpen}
+        key={`${step}:${pendingPhoneNumber}`}
+        isReady={isReady}
+        step={step}
+        pendingPhoneNumber={pendingPhoneNumber}
+        closeAuthModal={closeAuthModal}
+        backToPhoneStep={backToPhoneStep}
+        requestOtp={requestOtp}
+        verifyOtp={verifyOtp}
+        completeName={completeName}
+        clearAuthMessage={clearAuthMessage}
+        meta={meta}
+        isBusy={isBusy}
+        error={error}
+        infoMessage={infoMessage}
+      />
+    </>
   );
 }
 
 function AuthModalSheet({
+  isAuthModalOpen,
   isReady,
   step,
   pendingPhoneNumber,
@@ -90,6 +91,7 @@ function AuthModalSheet({
   error,
   infoMessage,
 }: {
+  isAuthModalOpen: boolean;
   isReady: boolean;
   step: "phone" | "otp" | "name";
   pendingPhoneNumber: string;
@@ -110,8 +112,9 @@ function AuthModalSheet({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-end justify-center px-4 py-4 sm:items-center">
-        <motion.button
+      {isAuthModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center px-4 py-4 sm:items-center">
+          <motion.button
           aria-label="Close authentication dialog"
           className="absolute inset-0 cursor-default bg-black/45 backdrop-blur-sm"
           initial={{ opacity: 0 }}
@@ -311,10 +314,9 @@ function AuthModalSheet({
               Firebase OTP on the client
             </span>
           </div>
-
-          <div id="auth-recaptcha-container" className="sr-only" />
         </motion.section>
       </div>
+      )}
     </AnimatePresence>
   );
 }
