@@ -107,7 +107,7 @@ function toCheckoutAddress(address: ShippingAddress): CheckoutShippingAddress {
 
 /* ─── Reusable labelled input ─────────────────────────────────────── */
 
-const INPUT_CLASS = "w-full rounded-2xl border bg-background px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/40";
+const INPUT_CLASS = "w-full rounded-[1rem] border border-gray-200 bg-gray-50/50 px-4 py-3 text-sm font-medium text-slate-900 outline-none transition-all focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 placeholder:text-slate-400";
 
 function FormField({
   id,
@@ -137,10 +137,10 @@ function FormField({
   disabled?: boolean;
 }) {
   return (
-    <div className="space-y-1">
-      <label htmlFor={id} className="text-xs font-medium uppercase tracking-[0.12em] text-muted-foreground">
+    <div className="space-y-1.5">
+      <label htmlFor={id} className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
         {label}
-        {!required && <span className="ml-1 normal-case tracking-normal text-muted-foreground/60">(optional)</span>}
+        {!required && <span className="ml-1 normal-case tracking-normal text-slate-400 font-medium">(optional)</span>}
       </label>
       <input
         id={id}
@@ -152,9 +152,9 @@ function FormField({
         maxLength={maxLength}
         inputMode={inputMode}
         disabled={disabled}
-        className={cn(INPUT_CLASS, error && "border-destructive/60 focus:ring-destructive/30", disabled && "cursor-not-allowed opacity-60")}
+        className={cn(INPUT_CLASS, error && "border-red-300 focus:border-red-500 focus:ring-red-500/10 bg-red-50/50", disabled && "cursor-not-allowed opacity-60 bg-gray-100")}
       />
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-xs font-semibold text-red-500">{error}</p>}
     </div>
   );
 }
@@ -213,17 +213,17 @@ function ShippingAddressForm({
   }, [address, onValidityChange]);
 
   return (
-    <div className="rounded-[1.5rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5">
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground/5 text-muted-foreground">
-          <MapPin className="h-4 w-4" />
+    <div className="rounded-[2rem] border border-gray-100 bg-white p-6 sm:p-8 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)]">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+          <MapPin className="h-5 w-5" />
         </div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">
           Shipping Address
-        </p>
+        </h2>
       </div>
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         {/* Full Name — full width */}
         <div className="sm:col-span-2">
           <FormField
@@ -356,15 +356,15 @@ function ShippingAddressForm({
 
 function CheckoutEmptyState() {
   return (
-    <div className="rounded-[1.5rem] border border-dashed border-border bg-card/50 px-6 py-16 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
-        <ShoppingCart className="h-6 w-6" />
+    <div className="rounded-[2.5rem] border border-gray-100 bg-white px-6 py-20 text-center shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]">
+      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-50 text-slate-300">
+        <ShoppingCart className="h-8 w-8" />
       </div>
-      <p className="mt-5 text-lg font-semibold text-foreground">Redirecting to products...</p>
-      <p className="mt-2 text-sm text-muted-foreground">Your cart is empty, so we are taking you back to the catalog.</p>
+      <p className="mt-6 text-2xl font-black text-slate-900 tracking-tight">Redirecting to products...</p>
+      <p className="mt-2 text-base text-slate-500 font-medium">Your cart is empty, so we are taking you back to the catalog.</p>
       <Link
         href="/products"
-        className="mt-6 inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90"
+        className="mt-8 inline-flex items-center justify-center rounded-full bg-blue-600 px-8 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:shadow-blue-600/40 transition-all hover:-translate-y-0.5 active:scale-95"
       >
         Continue Shopping
       </Link>
@@ -394,37 +394,24 @@ function CheckoutItemRow({
   lineTotal: number;
 }) {
   return (
-    <div className="grid gap-4 rounded-[1.5rem] border border-border bg-card/80 p-4 sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-center">
-      <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
+    <div className="flex gap-4 rounded-[1.5rem] border border-gray-100 bg-white p-4 shadow-sm items-center">
+      <div className="relative aspect-square h-20 w-20 overflow-hidden rounded-[1rem] border border-gray-100 bg-gray-50 flex items-center justify-center shrink-0">
         {productImage?.url ? (
-          <Image src={productImage.url} alt={productImage.altText || productTitle} fill sizes="92px" className="object-cover" />
+          <Image src={productImage.url} alt={productImage.altText || productTitle} fill sizes="80px" className="object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <ImageIcon className="h-7 w-7" />
-          </div>
+          <ImageIcon className="h-6 w-6 text-slate-300" />
         )}
       </div>
 
-      <div className="space-y-2">
-        {productBrand ? <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{productBrand}</p> : null}
-        <div className="space-y-1">
-          <h2 className="text-base font-semibold text-foreground">{productTitle}</h2>
-          <p className="text-sm text-muted-foreground">Color: {variantName}</p>
-          <p className="text-sm text-muted-foreground">Storage / Variant: {variantLabel}</p>
-        </div>
+      <div className="flex-1 min-w-0">
+        {productBrand && <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 truncate">{productBrand}</p>}
+        <h2 className="text-sm font-bold text-slate-900 truncate">{productTitle}</h2>
+        <p className="text-xs font-medium text-slate-500 truncate">{variantName} · {variantLabel}</p>
+        <p className="text-xs font-medium text-slate-400 mt-1">Qty: {quantity} × {formatPrice(unitPrice)}</p>
       </div>
 
-      <div className="grid gap-3 text-sm sm:justify-items-end">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-1 sm:text-right">
-          <span className="text-muted-foreground">Qty</span>
-          <span className="font-medium text-foreground">{quantity}</span>
-
-          <span className="text-muted-foreground">Unit price</span>
-          <span className="font-medium text-foreground">{formatPrice(unitPrice)}</span>
-
-          <span className="text-muted-foreground">Line total</span>
-          <span className="font-semibold text-foreground">{formatPrice(lineTotal)}</span>
-        </div>
+      <div className="text-right shrink-0 pl-2">
+        <span className="font-black text-slate-900 text-sm">{formatPrice(lineTotal)}</span>
       </div>
     </div>
   );
@@ -448,9 +435,9 @@ function CheckoutAuthGate() {
 
   if (!isInitialized) {
     return (
-      <div className="rounded-[1.5rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5">
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
+      <div className="rounded-[2rem] border border-gray-100 bg-white p-6 sm:p-8 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)] flex items-center justify-center">
+        <div className="flex items-center gap-3 text-sm font-bold text-slate-500">
+          <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
           Restoring session...
         </div>
       </div>
@@ -459,18 +446,18 @@ function CheckoutAuthGate() {
 
   if (user) {
     return (
-      <div className="rounded-[1.5rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5">
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-            <CheckCircle2 className="h-4 w-4" />
+      <div className="rounded-[2rem] border border-gray-100 bg-white p-6 sm:p-8 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)]">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <CheckCircle2 className="h-5 w-5" />
           </div>
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Signed In
-          </p>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">
+            Account Details
+          </h2>
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-foreground text-sm font-medium text-background">
+        <div className="flex items-center gap-4 bg-gray-50 rounded-[1.5rem] p-4 border border-gray-100">
+          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-sm font-bold text-white shadow-sm">
             {user.image ? (
               <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
             ) : (
@@ -478,16 +465,16 @@ function CheckoutAuthGate() {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">{user.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{user.phoneNumber ?? user.email}</p>
+            <p className="truncate text-base font-bold text-slate-900">{user.name}</p>
+            <p className="truncate text-sm font-medium text-slate-500">{user.phoneNumber ?? user.email}</p>
           </div>
           <button
             type="button"
             onClick={() => void logout()}
             disabled={isBusy}
-            className="inline-flex h-9 items-center gap-2 rounded-full border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-gray-200 bg-white px-4 text-xs font-bold text-slate-600 transition hover:bg-gray-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-50 shadow-sm"
           >
-            {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+            {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
             Sign out
           </button>
         </div>
@@ -496,17 +483,17 @@ function CheckoutAuthGate() {
   }
 
   return (
-    <div className="rounded-[1.5rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5">
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-foreground/5 text-muted-foreground">
-          <UserRound className="h-4 w-4" />
+    <div className="rounded-[2rem] border border-gray-100 bg-white p-6 sm:p-8 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)]">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+          <UserRound className="h-5 w-5" />
         </div>
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-          Account
-        </p>
+        <h2 className="text-xl font-black text-slate-900 tracking-tight">
+          Account Details
+        </h2>
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-muted-foreground">
+      <p className="text-base font-medium text-slate-500 leading-relaxed mb-6">
         Sign in with your phone number to continue. If you are new, we will create your account automatically.
       </p>
 
@@ -515,16 +502,16 @@ function CheckoutAuthGate() {
         onClick={() => openAuthModal("phone", "/checkout")}
         disabled={isBusy}
         className={cn(
-          "mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-sm font-medium text-background transition",
-          "hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          "inline-flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 py-4 px-6 text-sm font-bold text-white transition-all shadow-lg shadow-blue-600/20",
+          "hover:bg-blue-700 hover:shadow-blue-600/30 hover:-translate-y-0.5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 disabled:transform-none"
         )}
       >
-        {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserRound className="h-4 w-4" />}
-        Sign in with phone
+        {isBusy ? <Loader2 className="h-5 w-5 animate-spin" /> : <UserRound className="h-5 w-5" />}
+        Sign in to continue
       </button>
 
-      <p className="mt-3 text-center text-xs text-muted-foreground">
-        We use a secure backend session cookie after verifying your phone via Firebase OTP.
+      <p className="mt-4 text-center text-xs font-medium text-slate-400">
+        Secured by Firebase OTP Authentication.
       </p>
     </div>
   );
@@ -542,15 +529,15 @@ function PaymentProcessingOverlay({ step }: { step: CheckoutStep }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-8 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-md">
+      <div className="flex flex-col items-center gap-6 rounded-[2.5rem] border border-gray-100 bg-white p-10 shadow-2xl">
         <div className="relative">
-          <Loader2 className="h-10 w-10 animate-spin text-foreground" />
-          <ShieldCheck className="absolute -bottom-1 -right-1 h-5 w-5 text-emerald-500" />
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
+          <ShieldCheck className="absolute -bottom-1 -right-1 h-6 w-6 text-emerald-500 bg-white rounded-full" />
         </div>
-        <div className="text-center">
-          <p className="text-base font-semibold text-foreground">{messages[step] ?? "Processing..."}</p>
-          <p className="mt-1 text-sm text-muted-foreground">Please do not close this page</p>
+        <div className="text-center space-y-1">
+          <p className="text-lg font-black text-slate-900 tracking-tight">{messages[step] ?? "Processing..."}</p>
+          <p className="text-sm font-medium text-slate-500">Please do not close this page</p>
         </div>
       </div>
     </div>
@@ -618,7 +605,7 @@ export default function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 pt-32">
         <CheckoutEmptyState />
       </main>
     );
@@ -626,35 +613,31 @@ export default function CheckoutPage() {
 
   return (
     <>
-      {/* Payment processing overlay — covers the page during order creation, payment, and verification. */}
       <PaymentProcessingOverlay step={paymentStep} />
 
-      <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8 space-y-2">
-          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">Storefront</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Checkout</h1>
-          <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-            Fill in your shipping details and review your order before proceeding.
+      <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 pt-32">
+        <div className="mb-10 space-y-2">
+          <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900">Checkout</h1>
+          <p className="max-w-2xl text-lg font-medium text-slate-500">
+            Securely complete your order and manage delivery details.
           </p>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <section className="space-y-6">
-            {/* ── Auth gate ── */}
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px]">
+          <section className="space-y-8">
             <CheckoutAuthGate />
 
-            {/* ── Shipping address form ── */}
             <ShippingAddressForm
               onValidityChange={setShippingValid}
               onAddressChange={handleAddressChange}
               disabled={isProcessing}
             />
+          </section>
 
-            {/* ── Cart items ── */}
-            <div className="space-y-4">
-              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                Order Items ({totalItems})
-              </p>
+          <aside className="h-fit rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] lg:sticky lg:top-32 flex flex-col">
+            <h2 className="text-xl font-black text-slate-900 mb-6">Order Summary</h2>
+            
+            <div className="flex-1 overflow-y-auto max-h-[40vh] pr-2 space-y-3 mb-6 scrollbar-hide">
               {items.map((item) => (
                 <CheckoutItemRow
                   key={`${item.productId}:${item.variantId}`}
@@ -669,75 +652,72 @@ export default function CheckoutPage() {
                 />
               ))}
             </div>
-          </section>
 
-          <aside className="h-fit rounded-[1.5rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5 lg:sticky lg:top-6">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Order summary</p>
-
-            <div className="mt-5 space-y-4">
-              <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
-                <span>Total items</span>
-                <span className="font-medium text-foreground">{totalItems}</span>
+            <div className="space-y-4 border-t border-gray-100 pt-6">
+              <div className="flex items-center justify-between text-sm font-medium text-slate-500">
+                <span>Total Items</span>
+                <span className="text-slate-900">{totalItems}</span>
               </div>
 
-              <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
-                <span className="text-sm font-medium text-muted-foreground">Subtotal</span>
-                <span className="text-lg font-semibold text-foreground">{formatPrice(subtotal)}</span>
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-bold text-slate-900">Total to Pay</span>
+                <span className="text-3xl font-black text-slate-900 tracking-tight">{formatPrice(subtotal)}</span>
               </div>
             </div>
 
-            {/* ── Payment error message ── */}
             {paymentStep === "error" && paymentError && (
-              <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
-                <p className="text-xs font-medium text-destructive">{paymentError}</p>
+              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4">
+                <p className="text-sm font-bold text-red-600">{paymentError}</p>
                 <button
                   type="button"
                   onClick={resetPayment}
-                  className="mt-2 text-xs font-semibold text-destructive underline underline-offset-2 hover:no-underline"
+                  className="mt-2 text-sm font-bold text-red-600 underline underline-offset-4 hover:no-underline"
                 >
                   Try again
                 </button>
               </div>
             )}
 
-            {/* ── Place Order button ── */}
             <button
               type="button"
               disabled={!canPlaceOrder}
               onClick={handlePlaceOrder}
               className={cn(
-                "mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition",
+                "mt-8 flex w-full items-center justify-center gap-2 rounded-full px-6 py-4 text-base font-bold transition-all",
                 canPlaceOrder
-                  ? "bg-foreground text-background hover:opacity-90 active:scale-[0.98]"
-                  : "cursor-not-allowed bg-muted text-muted-foreground"
+                  ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:scale-95"
+                  : "cursor-not-allowed bg-gray-100 text-slate-400"
               )}
             >
               {isProcessing ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-5 w-5 animate-spin" />
                   Processing...
                 </>
               ) : (
                 <>
-                  Place Order
-                  <ArrowRight className="h-4 w-4" />
+                  Proceed to Payment
+                  <ArrowRight className="h-5 w-5" />
                 </>
               )}
             </button>
 
             {!user ? (
-              <p className="mt-3 text-center text-xs text-muted-foreground">
-                Sign in to place your order
+              <p className="mt-4 text-center text-sm font-bold text-slate-400">
+                Sign in above to place your order
               </p>
             ) : !shippingValid ? (
-              <p className="mt-3 text-center text-xs text-muted-foreground">
+              <p className="mt-4 text-center text-sm font-bold text-slate-400">
                 Complete the shipping address to continue
               </p>
             ) : (
-              <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
-                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                Secured by Razorpay
-              </p>
+              <div className="mt-6 flex flex-col items-center justify-center gap-2 text-center text-xs font-bold text-slate-400">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                  Secured by Razorpay
+                </div>
+                <p className="text-[10px] uppercase tracking-wider font-semibold">100% Secure Payment</p>
+              </div>
             )}
           </aside>
         </div>

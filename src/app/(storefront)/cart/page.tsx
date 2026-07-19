@@ -10,15 +10,15 @@ import { useCartStore } from "@/stores/cart-store";
 
 function CartEmptyState() {
   return (
-    <div className="rounded-[1.5rem] border border-dashed border-border bg-card/50 px-6 py-16 text-center">
-      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
-        <ShoppingCart className="h-6 w-6" />
+    <div className="rounded-[2.5rem] border border-gray-100 bg-white px-6 py-20 text-center shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]">
+      <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-slate-50 text-slate-300">
+        <ShoppingCart className="h-8 w-8" />
       </div>
-      <p className="mt-5 text-lg font-semibold text-foreground">Your cart is empty</p>
-      <p className="mt-2 text-sm text-muted-foreground">Browse products and add the variant you want to purchase.</p>
+      <p className="mt-6 text-2xl font-black text-slate-900 tracking-tight">Your cart is empty</p>
+      <p className="mt-2 text-base text-slate-500 font-medium">Browse products and add the variant you want to purchase.</p>
       <Link
         href="/products"
-        className="mt-6 inline-flex items-center justify-center rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90"
+        className="mt-8 inline-flex items-center justify-center rounded-full bg-blue-600 px-8 py-4 text-sm font-bold text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:shadow-blue-600/40 transition-all hover:-translate-y-0.5 active:scale-95"
       >
         Continue Shopping
       </Link>
@@ -56,66 +56,63 @@ function CartItemRow({
   onRemoveRequest: (productId: string, variantId: string, label: string) => void;
 }) {
   return (
-    <div className="grid gap-4 rounded-[1.5rem] border border-border bg-card/80 p-4 sm:grid-cols-[92px_minmax(0,1fr)_auto] sm:items-center">
-      <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted">
+    <div className="grid gap-4 rounded-[2rem] border border-gray-100 bg-white p-5 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.03)] sm:grid-cols-[100px_minmax(0,1fr)_auto] sm:items-center hover:border-gray-200 transition-colors">
+      <div className="relative aspect-square overflow-hidden rounded-[1.25rem] border border-gray-100 bg-gray-50 flex items-center justify-center">
         {productImage?.url ? (
-          <Image src={productImage.url} alt={productImage.altText || productTitle} fill sizes="92px" className="object-cover" />
+          <Image src={productImage.url} alt={productImage.altText || productTitle} fill sizes="100px" className="object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <ImageIcon className="h-7 w-7" />
-          </div>
+          <ImageIcon className="h-8 w-8 text-slate-300" />
         )}
       </div>
 
-      <div className="space-y-2">
-        {productBrand ? <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">{productBrand}</p> : null}
-        <div className="space-y-1">
-          <h2 className="text-base font-semibold text-foreground">{productTitle}</h2>
-          <p className="text-sm text-muted-foreground">Color: {variantName}</p>
-          <p className="text-sm text-muted-foreground">Storage / Variant: {variantLabel}</p>
+      <div className="space-y-1.5">
+        {productBrand && <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">{productBrand}</p>}
+        <div className="space-y-0.5">
+          <h2 className="text-lg font-bold text-slate-900">{productTitle}</h2>
+          <p className="text-sm font-medium text-slate-500">{variantName} · {variantLabel}</p>
         </div>
       </div>
 
-      <div className="grid gap-3 text-sm sm:justify-items-end">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1 sm:grid-cols-1 sm:text-right">
-          <span className="text-muted-foreground">Qty</span>
-          <div className="flex items-center gap-2 sm:justify-end">
+      <div className="grid gap-4 text-sm sm:justify-items-end mt-4 sm:mt-0">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-1 sm:text-right">
+          <span className="text-slate-400 font-medium sm:hidden">Quantity</span>
+          <div className="flex items-center gap-3 sm:justify-end">
             <button
               type="button"
               onClick={() => onDecrease(productId, variantId)}
               disabled={quantity <= 1}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:border-primary/40 hover:bg-primary/5"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition-colors hover:bg-slate-200 disabled:opacity-50"
               aria-label={`Decrease quantity for ${productTitle}`}
             >
               <Minus className="h-3.5 w-3.5" />
             </button>
 
-            <span className="min-w-8 text-center font-medium text-foreground">{quantity}</span>
+            <span className="min-w-6 text-center font-bold text-slate-900">{quantity}</span>
 
             <button
               type="button"
               onClick={() => onIncrease(productId, variantId)}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:border-primary/40 hover:bg-primary/5"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-700 transition-colors hover:bg-slate-200"
               aria-label={`Increase quantity for ${productTitle}`}
             >
               <Plus className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          <span className="text-muted-foreground">Unit price</span>
-          <span className="font-medium text-foreground">{formatPrice(unitPrice)}</span>
+          <span className="text-slate-400 font-medium sm:hidden">Unit price</span>
+          <span className="font-semibold text-slate-900 sm:hidden">{formatPrice(unitPrice)}</span>
 
-          <span className="text-muted-foreground">Line total</span>
-          <span className="font-semibold text-foreground">{formatPrice(lineTotal)}</span>
+          <span className="text-slate-400 font-medium sm:hidden">Total</span>
+          <span className="font-black text-slate-900 text-base">{formatPrice(lineTotal)}</span>
         </div>
 
         <button
           type="button"
           onClick={() => onRemoveRequest(productId, variantId, `${productTitle} · ${variantName} / ${variantLabel}`)}
-          className="inline-flex items-center justify-end gap-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+          className="inline-flex items-center justify-end gap-2 text-sm font-bold text-red-500 transition-colors hover:text-red-600 sm:mt-2"
         >
           <Trash2 className="h-4 w-4" />
-          Remove item
+          Remove
         </button>
       </div>
     </div>
@@ -143,28 +140,28 @@ function RemoveConfirmationDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={onCancel} />
+      <button type="button" aria-label="Close dialog" className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={onCancel} />
 
-      <div className="relative z-10 w-full max-w-md rounded-[1.5rem] border border-border bg-card p-6 shadow-[0_28px_80px_-34px_rgba(15,23,42,0.55)]">
-        <h2 className="text-xl font-semibold tracking-tight text-foreground">Remove Item</h2>
-        <p className="mt-2 text-sm leading-6 text-muted-foreground">Are you sure you want to remove this item from your cart?</p>
+      <div className="relative z-10 w-full max-w-md rounded-[2rem] border border-gray-100 bg-white p-8 shadow-2xl">
+        <h2 className="text-2xl font-black tracking-tight text-slate-900">Remove Item</h2>
+        <p className="mt-2 text-base font-medium text-slate-500">Are you sure you want to remove this item from your bag?</p>
 
-        <p className="mt-4 rounded-2xl border border-border bg-background px-4 py-3 text-sm text-foreground">{target.label}</p>
+        <p className="mt-6 rounded-[1rem] bg-gray-50 px-5 py-4 text-sm font-semibold text-slate-700 border border-gray-100">{target.label}</p>
 
-        <div className="mt-6 flex items-center justify-end gap-3">
+        <div className="mt-8 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex items-center justify-center rounded-full border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground transition hover:border-primary/40 hover:bg-primary/5"
+            className="inline-flex items-center justify-center rounded-full bg-white border border-gray-200 px-6 py-3 text-sm font-bold text-slate-700 transition hover:bg-gray-50"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={() => onRemove(target.productId, target.variantId)}
-            className="inline-flex items-center justify-center rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition hover:opacity-90"
+            className="inline-flex items-center justify-center rounded-full bg-red-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-red-700 shadow-md shadow-red-600/20"
           >
-            Remove
+            Remove Item
           </button>
         </div>
       </div>
@@ -191,17 +188,16 @@ export default function CartPage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 space-y-2">
-        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">Storefront</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Cart</h1>
-        <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-          Review the selected product variants before moving on to checkout later.
+    <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 pt-32">
+      <div className="mb-10 space-y-2">
+        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900">Shopping Bag</h1>
+        <p className="max-w-2xl text-lg font-medium text-slate-500">
+          Review your items before proceeding to secure checkout.
         </p>
       </div>
 
       {items.length > 0 ? (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
           <section className="space-y-4">
             {items.map((item) => (
               <CartItemRow
@@ -223,34 +219,35 @@ export default function CartPage() {
             ))}
           </section>
 
-          <aside className="h-fit rounded-[1.5rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Order summary</p>
+          <aside className="h-fit rounded-[2.5rem] border border-gray-100 bg-white p-8 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] sticky top-32">
+            <h2 className="text-xl font-black text-slate-900">Order Summary</h2>
 
-            <div className="mt-5 space-y-4">
-              <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
-                <span>Items</span>
-                <span className="font-medium text-foreground">{totalItems}</span>
+            <div className="mt-8 space-y-4">
+              <div className="flex items-center justify-between text-base font-medium text-slate-500">
+                <span>Total Items</span>
+                <span className="text-slate-900">{totalItems}</span>
               </div>
 
-              <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
-                <span className="text-sm font-medium text-muted-foreground">Subtotal</span>
-                <span className="text-lg font-semibold text-foreground">{formatPrice(subtotal)}</span>
+              <div className="flex items-center justify-between border-t border-slate-100 pt-6">
+                <span className="text-lg font-bold text-slate-900">Subtotal</span>
+                <span className="text-2xl font-black text-slate-900">{formatPrice(subtotal)}</span>
               </div>
+              <p className="text-sm font-medium text-slate-400 mt-2">Shipping & taxes calculated at checkout.</p>
             </div>
 
             <Link
               href="/checkout"
               className={cn(
-                "mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90"
+                "mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-4 text-base font-bold text-white transition-all shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:shadow-blue-600/40 hover:-translate-y-0.5 active:scale-95"
               )}
             >
-              Checkout
-              <ArrowRight className="h-4 w-4" />
+              Checkout Now
+              <ArrowRight className="h-5 w-5" />
             </Link>
 
             <Link
               href="/products"
-              className="mt-4 block text-center text-sm font-medium text-muted-foreground transition hover:text-foreground"
+              className="mt-6 block text-center text-sm font-bold text-slate-500 transition-colors hover:text-blue-600"
             >
               Continue Shopping
             </Link>

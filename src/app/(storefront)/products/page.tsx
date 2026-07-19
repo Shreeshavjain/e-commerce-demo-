@@ -11,25 +11,24 @@ export default async function ProductsPage() {
   const result = await listProducts();
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 space-y-2">
-        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">Storefront</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Products</h1>
-        <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-          Explore published items from the catalog with live pricing and variant availability.
+    <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 pt-32">
+      <div className="mb-12 space-y-2 text-center sm:text-left">
+        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900">Products</h1>
+        <p className="max-w-2xl text-lg font-medium text-slate-500 mx-auto sm:mx-0">
+          Explore our latest collection of premium products.
         </p>
       </div>
 
       {result.products.length > 0 ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {result.products.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
       ) : (
-        <div className="rounded-[1.5rem] border border-dashed border-border bg-card/50 px-6 py-16 text-center">
-          <p className="text-lg font-semibold text-foreground">No products available yet</p>
-          <p className="mt-2 text-sm text-muted-foreground">Published products will appear here once they are added to the catalog.</p>
+        <div className="rounded-[2.5rem] border border-gray-100 bg-white px-6 py-20 text-center shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)]">
+          <p className="text-2xl font-black text-slate-900 tracking-tight">No products available yet</p>
+          <p className="mt-2 text-base font-medium text-slate-500">Published products will appear here once they are added to the catalog.</p>
         </div>
       )}
     </main>
