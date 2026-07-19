@@ -7,8 +7,12 @@ export const metadata: Metadata = {
   description: "Browse published products from the storefront catalog.",
 };
 
-export default async function ProductsPage() {
-  const result = await listProducts();
+export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const resolvedParams = await searchParams;
+  const category = typeof resolvedParams.category === "string" ? resolvedParams.category : undefined;
+  const search = typeof resolvedParams.search === "string" ? resolvedParams.search : undefined;
+
+  const result = await listProducts({ category, search });
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8 pt-32">

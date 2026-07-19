@@ -1,6 +1,7 @@
 import { Types } from "mongoose";
 import { connectToDatabase } from "@/database/mongoose";
 import { ProductModel, type ProductDbRecord, type ProductDocument } from "@/models/product";
+import { CategoryModel } from "@/models/category";
 import type { ProductStatus } from "@/models/constants";
 import type { Product, ProductListFilters, ProductListResult, ProductColorVariant, ProductMedia, ProductVariantOption, ProductSeo } from "@/types/product";
 import type { ProductColorVariantInput, ProductCreateInput, ProductMediaInput, ProductVariantOptionInput, ProductSeoInput } from "@/validations/product";
@@ -425,7 +426,10 @@ async function listProductsWithVisibility(filters: ProductListFilters, visibilit
   const limit = Math.min(Math.max(filters.limit ?? 12, 1), 100);
   const skip = (page - 1) * limit;
 
-  const query: Record<string, unknown> & { $or?: Array<Record<string, unknown>> } = {};
+  const query: Record<string, unknown> & { 
+    $or?: Array<Record<string, unknown>>;
+    $and?: Array<Record<string, unknown>>;
+  } = {};
 
   if (visibility.defaultPublishedOnly) {
     query.isPublished = filters.isPublished ?? true;
@@ -438,7 +442,40 @@ async function listProductsWithVisibility(filters: ProductListFilters, visibilit
   }
 
   if (filters.category) {
-    query.category = new Types.ObjectId(filters.category);
+    let categoryId: Types.ObjectId | null = null;
+    
+    if (Types.ObjectId.isValid(filters.category)) {
+      categoryId = new Types.ObjectId(filters.category);
+    } else {
+      // It might be a slug from the storefront
+      const categoryDoc = await CategoryModel.findOne({ slug: filters.category }, { _id: 1 }).lean();
+      if (categoryDoc) {
+        categoryId = categoryDoc._id;
+      }
+    }
+    
+    if (categoryId) {
+      // Find all subcategories for this category
+      const childCategories = await CategoryModel.find({ parentCategory: categoryId }, { _id: 1 }).lean();
+      const childCategoryIds = childCategories.map(c => c._id);
+      
+      if (childCategoryIds.length > 0) {
+        const allCategoryIds = [categoryId, ...childCategoryIds];
+        
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { category: { $in: allCategoryIds } },
+            { subCategory: { $in: allCategoryIds } }
+          ]
+        });
+      } else {
+        query.category = categoryId;
+      }
+    } else {
+      // If a category was requested by slug but doesn't exist, return no products
+      query._id = new Types.ObjectId("000000000000000000000000"); 
+    }
   }
 
   if (filters.subCategory) {

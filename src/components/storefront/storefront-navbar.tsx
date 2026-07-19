@@ -42,30 +42,46 @@ export function StorefrontNavbar() {
     }
   };
 
+  const [hash, setHash] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      // Sync hash on mount and when pathname changes (if Next.js updates it)
+      setHash(window.location.hash);
+      
+      const handleHashChange = () => {
+        setHash(window.location.hash);
+      };
+      
+      window.addEventListener("hashchange", handleHashChange);
+      return () => window.removeEventListener("hashchange", handleHashChange);
+    }
+  }, [pathname]);
+
   const cartLabel = isMounted && totalItems > 0 ? `Cart, ${totalItems} item${totalItems === 1 ? "" : "s"}` : "Cart";
 
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Products", href: "/products" },
-    // Only check exact match for Home, check prefix for products
+    { name: "Categories", href: "/#categories" },
+    { name: "New Arrivals", href: "/#new-arrivals" },
   ];
 
   const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
+    if (href.startsWith("/#")) {
+      return pathname === "/" && hash === href.replace("/", "");
+    }
+    if (href === "/") {
+      return pathname === "/" && hash === "";
+    }
     return pathname.startsWith(href);
   };
 
   return (
     <>
-      {/* 
-        We remove the full-width background wrapper. 
-        The header is just a fixed container, pointer-events-none so we can click through it,
-        but the actual capsules inside will have pointer-events-auto.
-      */}
       <header className="fixed inset-x-0 top-6 z-50 pointer-events-none transition-all duration-500">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 gap-4">
           
-          {/* Left: Mobile Menu & Logo Capsule */}
           <div className="flex items-center gap-2 pointer-events-auto">
             <button
               onClick={() => setIsMobileMenuOpen(true)}
@@ -76,6 +92,7 @@ export function StorefrontNavbar() {
             </button>
             <Link 
               href="/" 
+              onClick={() => setHash("")}
               className="flex items-center justify-center h-12 px-6 rounded-full bg-white/70 backdrop-blur-xl border border-white/40 shadow-sm hover:bg-white/90 transition-all"
             >
               <span className="text-xl font-black tracking-tight text-slate-900">
@@ -84,7 +101,6 @@ export function StorefrontNavbar() {
             </Link>
           </div>
 
-          {/* Center: Navigation Capsules (Desktop) */}
           <nav className="hidden lg:flex items-center gap-2 pointer-events-auto">
             <div className="flex items-center p-1.5 rounded-full bg-white/60 backdrop-blur-xl border border-white/40 shadow-sm">
               {navLinks.map((link) => {
@@ -93,6 +109,13 @@ export function StorefrontNavbar() {
                   <Link
                     key={link.name}
                     href={link.href}
+                    onClick={() => {
+                      if (link.href.startsWith("/#")) {
+                        setHash(link.href.replace("/", ""));
+                      } else if (link.href === "/") {
+                        setHash("");
+                      }
+                    }}
                     className={cn(
                       "relative px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-500 ease-out",
                       active 
@@ -107,13 +130,6 @@ export function StorefrontNavbar() {
                   </Link>
                 );
               })}
-              {/* Internal anchors, we can just style them like inactive links or active if hash matches */}
-              <Link href="/#categories" className="px-6 py-2.5 rounded-full text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/50 transition-all duration-300">
-                Categories
-              </Link>
-              <Link href="/#new-arrivals" className="px-6 py-2.5 rounded-full text-sm font-semibold text-slate-600 hover:text-slate-900 hover:bg-white/50 transition-all duration-300">
-                New Arrivals
-              </Link>
             </div>
           </nav>
 
