@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import { Toaster } from "sonner";
 import { AuthProvider } from "@/components/providers/auth-provider";
-import { ThemeProvider } from "@/components/providers/theme-provider";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -29,14 +28,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${manrope.variable} antialiased`}>
-        <ThemeProvider>
-          <AuthProvider>
-            <div className="min-h-screen">
-              {children}
-              <Toaster position="top-right" richColors closeButton />
-            </div>
-          </AuthProvider>
-        </ThemeProvider>
+        <AuthProvider>
+          <div className="min-h-screen">
+            {children}
+            <Toaster position="top-right" richColors closeButton />
+          </div>
+        </AuthProvider>
       </body>
     </html>
   );
