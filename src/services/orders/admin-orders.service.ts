@@ -96,6 +96,48 @@ export function isValidAdminOrderStatusTransition(currentStatus: OrderStatus, ne
   return getAllowedStatusTargets(currentStatus).includes(nextStatus);
 }
 
+export type AdminDashboardMetrics = {
+  totalRevenue: number;
+  pendingOrders: number;
+  deliveredOrders: number;
+  todaysOrders: number;
+};
+
+export async function getAdminDashboardMetrics(): Promise<AdminDashboardMetrics> {
+  await connectToDatabase();
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const [revenueResult, statusCounts, todayCount] = await Promise.all([
+    OrderModel.aggregate([
+      { $match: { paymentStatus: "paid" } },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+    ]),
+    OrderModel.aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]),
+    OrderModel.countDocuments({ createdAt: { $gte: startOfToday } })
+  ]);
+
+  const totalRevenue = revenueResult[0]?.total || 0;
+  
+  let pendingOrders = 0;
+  let deliveredOrders = 0;
+
+  for (const status of statusCounts) {
+    if (status._id === "pending") pendingOrders = status.count;
+    if (status._id === "delivered") deliveredOrders = status.count;
+  }
+
+  return {
+    totalRevenue,
+    pendingOrders,
+    deliveredOrders,
+    todaysOrders: todayCount,
+  };
+}
+
 export async function listAdminOrders(filters: AdminOrderFilters): Promise<PaginatedAdminOrdersResponse> {
   await connectToDatabase();
 

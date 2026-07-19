@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, Filter, Search, ShoppingBag } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Filter, Search, ShoppingBag, DollarSign, PackageOpen, Truck, Clock } from "lucide-react";
 import { getCurrentAuthenticatedUser } from "@/server/auth/current-user";
 import { isAdminOrAbove } from "@/server/auth/role-guards";
-import { listAdminOrders } from "@/services/orders";
+import { listAdminOrders, getAdminDashboardMetrics } from "@/services/orders";
 import { adminOrderListQuerySchema } from "@/validations/admin-order";
 import { orderStatuses, paymentStatuses } from "@/models/constants";
 import { cn } from "@/lib/utils";
@@ -85,18 +85,21 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
         toDate: "",
       };
 
-  const result = await listAdminOrders({
-    page: validatedQuery.page,
-    limit: validatedQuery.limit,
-    search: validatedQuery.search || undefined,
-    sortBy: validatedQuery.sortBy,
-    sortOrder: validatedQuery.sortOrder,
-    status: validatedQuery.status && validatedQuery.status !== "all" ? validatedQuery.status : undefined,
-    paymentStatus:
-      validatedQuery.paymentStatus && validatedQuery.paymentStatus !== "all" ? validatedQuery.paymentStatus : undefined,
-    fromDate: validatedQuery.fromDate || undefined,
-    toDate: validatedQuery.toDate || undefined,
-  });
+  const [result, metrics] = await Promise.all([
+    listAdminOrders({
+      page: validatedQuery.page,
+      limit: validatedQuery.limit,
+      search: validatedQuery.search || undefined,
+      sortBy: validatedQuery.sortBy,
+      sortOrder: validatedQuery.sortOrder,
+      status: validatedQuery.status && validatedQuery.status !== "all" ? validatedQuery.status : undefined,
+      paymentStatus:
+        validatedQuery.paymentStatus && validatedQuery.paymentStatus !== "all" ? validatedQuery.paymentStatus : undefined,
+      fromDate: validatedQuery.fromDate || undefined,
+      toDate: validatedQuery.toDate || undefined,
+    }),
+    getAdminDashboardMetrics(),
+  ]);
 
   const showingStart = result.pagination.total === 0 ? 0 : (result.pagination.page - 1) * result.pagination.limit + 1;
   const showingEnd = Math.min(result.pagination.page * result.pagination.limit, result.pagination.total);
@@ -118,8 +121,8 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
       <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.18),transparent_45%)]" />
 
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="grid gap-4 rounded-[2rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5 lg:grid-cols-[1.2fr_0.8fr] lg:p-8">
-          <div className="space-y-3">
+        <section className="grid gap-4 rounded-[2rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5 lg:grid-cols-5 lg:p-8">
+          <div className="space-y-3 lg:col-span-1">
             <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">Admin dashboard</p>
             <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Order management</h1>
             <p className="max-w-3xl text-sm leading-7 text-muted-foreground sm:text-base">
@@ -127,13 +130,38 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
             </p>
           </div>
 
-          <div className="rounded-3xl border border-border bg-background/85 p-4">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <ShoppingBag className="h-4 w-4" />
-              <p className="text-sm">Total orders</p>
+          <div className="lg:col-span-4 grid gap-4 grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-3xl border border-border bg-background/85 p-4 flex flex-col justify-center">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <DollarSign className="h-4 w-4" />
+                <p className="text-sm">Total Revenue</p>
+              </div>
+              <p className="mt-2 text-2xl font-semibold text-foreground">{formatCurrency(metrics.totalRevenue)}</p>
             </div>
-            <p className="mt-2 text-3xl font-semibold text-foreground">{result.pagination.total}</p>
-            <p className="mt-1 text-xs text-muted-foreground">Showing {showingStart}-{showingEnd}</p>
+            
+            <div className="rounded-3xl border border-border bg-background/85 p-4 flex flex-col justify-center">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <p className="text-sm">Pending Orders</p>
+              </div>
+              <p className="mt-2 text-3xl font-semibold text-foreground">{metrics.pendingOrders}</p>
+            </div>
+
+            <div className="rounded-3xl border border-border bg-background/85 p-4 flex flex-col justify-center">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <PackageOpen className="h-4 w-4" />
+                <p className="text-sm">Delivered</p>
+              </div>
+              <p className="mt-2 text-3xl font-semibold text-foreground">{metrics.deliveredOrders}</p>
+            </div>
+
+            <div className="rounded-3xl border border-border bg-background/85 p-4 flex flex-col justify-center">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <CalendarDays className="h-4 w-4" />
+                <p className="text-sm">Today's Orders</p>
+              </div>
+              <p className="mt-2 text-3xl font-semibold text-foreground">{metrics.todaysOrders}</p>
+            </div>
           </div>
         </section>
 
@@ -144,7 +172,7 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
               <input
                 name="search"
                 defaultValue={validatedQuery.search ?? ""}
-                placeholder="Search order, Razorpay ID, customer"
+                placeholder="Search by Order ID, Razorpay ID or Customer"
                 className="w-full bg-transparent text-foreground outline-none placeholder:text-muted-foreground"
               />
             </label>
@@ -213,7 +241,7 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
           <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <CalendarDays className="h-4 w-4" />
-              Page {result.pagination.page} of {result.pagination.totalPages}
+              Page {result.pagination.page} of {result.pagination.totalPages} ({result.pagination.total} orders)
             </div>
 
             <form method="get" className="flex flex-wrap items-center gap-2">
@@ -253,15 +281,18 @@ export default async function AdminOrdersPage({ searchParams }: AdminOrdersPageP
           </div>
 
           {result.orders.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-dashed border-border bg-background/70 p-10 text-center">
+            <div className="flex flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-border bg-background/70 py-16 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted/60 mb-4">
+                <Search className="h-8 w-8 text-muted-foreground/60" />
+              </div>
               <p className="text-lg font-semibold text-foreground">No orders found</p>
               <p className="mt-2 text-sm text-muted-foreground">Try adjusting filters or searching with a broader term.</p>
             </div>
           ) : (
             <>
-              <div className="hidden overflow-hidden rounded-2xl border border-border lg:block">
+              <div className="hidden overflow-hidden overflow-y-auto max-h-[600px] rounded-2xl border border-border lg:block relative">
                 <table className="w-full divide-y divide-border text-sm">
-                  <thead className="bg-muted/35 text-left text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  <thead className="bg-muted/35 text-left text-xs uppercase tracking-[0.16em] text-muted-foreground sticky top-0 z-10 backdrop-blur-md">
                     <tr>
                       <th className="px-4 py-3">Order ID</th>
                       <th className="px-4 py-3">Customer</th>

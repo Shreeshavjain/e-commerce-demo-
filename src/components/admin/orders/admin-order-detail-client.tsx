@@ -1,6 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
+import {
+  CheckCircle2,
+  CircleDot,
+  Truck,
+  Package as PackageIcon,
+  XCircle,
+  RotateCcw,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import { OrderStatusBadge } from "@/components/admin/orders/order-status-badge";
 import { PaymentStatusBadge } from "@/components/admin/orders/payment-status-badge";
 import { AdminOrderStatusControls } from "@/components/admin/orders/admin-order-status-controls";
@@ -26,6 +36,94 @@ function formatDateTime(value: string | null) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+const orderTimeline = [
+  { key: "confirmed", label: "Confirmed", icon: CheckCircle2 },
+  { key: "processing", label: "Processing", icon: CircleDot },
+  { key: "shipped", label: "Shipped", icon: Truck },
+  { key: "delivered", label: "Delivered", icon: PackageIcon },
+] as const;
+
+const statusIndex: Record<string, number> = {
+  pending: -1,
+  confirmed: 0,
+  processing: 1,
+  shipped: 2,
+  delivered: 3,
+};
+
+function StatusTimeline({ status }: { status: string }) {
+  const isCancelled = status === "cancelled";
+  const isRefunded = status === "refunded";
+
+  if (isCancelled || isRefunded) {
+    const Icon = isCancelled ? XCircle : RotateCcw;
+    const label = isCancelled ? "Order Cancelled" : "Order Refunded";
+    const color = isCancelled ? "text-rose-500" : "text-zinc-500";
+
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-border bg-card/80 p-5 mt-4">
+        <Icon className={cn("h-6 w-6", color)} />
+        <span className={cn("text-sm font-semibold", color)}>{label}</span>
+      </div>
+    );
+  }
+
+  const currentIdx = statusIndex[status] ?? -1;
+
+  return (
+    <div className="mt-4">
+      <div className="relative flex items-center justify-between">
+        {/* Background line */}
+        <div className="absolute left-0 right-0 top-1/2 h-0.5 -translate-y-1/2 bg-border" />
+
+        {/* Progress line */}
+        {currentIdx >= 0 && (
+          <div
+            className="absolute left-0 top-1/2 h-0.5 -translate-y-1/2 bg-emerald-500 transition-all duration-500"
+            style={{
+              width: `${Math.min(100, (currentIdx / (orderTimeline.length - 1)) * 100)}%`,
+            }}
+          />
+        )}
+
+        {orderTimeline.map((step, i) => {
+          const isCompleted = i <= currentIdx;
+          const isCurrent = i === currentIdx;
+          const StepIcon = step.icon;
+
+          return (
+            <div key={step.key} className="relative z-10 flex flex-col items-center">
+              <div
+                className={cn(
+                  "flex h-9 w-9 items-center justify-center rounded-full border-2 transition-all bg-card",
+                  isCompleted
+                    ? "border-emerald-500 bg-emerald-500 text-white"
+                    : "border-border text-muted-foreground/40",
+                  isCurrent && "ring-4 ring-emerald-500/20"
+                )}
+              >
+                {isCompleted ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <StepIcon className="h-4 w-4" />
+                )}
+              </div>
+              <span
+                className={cn(
+                  "mt-2 text-[11px] font-medium hidden sm:block",
+                  isCompleted ? "text-foreground" : "text-muted-foreground/50"
+                )}
+              >
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 type AdminOrderDetailClientProps = {
@@ -116,15 +214,19 @@ export function AdminOrderDetailClient({ initialOrder }: AdminOrderDetailClientP
 
         <article className="rounded-3xl border border-border bg-card/95 p-5 shadow-sm shadow-black/5">
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Timeline</p>
-          <ol className="mt-4 space-y-3">
+          <StatusTimeline status={order.status} />
+          
+          <div className="mt-6 space-y-3">
             {order.timeline.map((event) => (
-              <li key={event.key} className="rounded-2xl border border-border bg-background/70 p-3">
-                <p className="text-sm font-semibold text-foreground">{event.label}</p>
-                <p className="text-xs text-muted-foreground">{formatDateTime(event.at)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{event.description}</p>
-              </li>
+              <div key={event.key} className="flex justify-between items-start text-sm">
+                <div>
+                  <p className="font-semibold text-foreground">{event.label}</p>
+                  <p className="text-xs text-muted-foreground">{event.description}</p>
+                </div>
+                <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDateTime(event.at)}</p>
+              </div>
             ))}
-          </ol>
+          </div>
         </article>
       </section>
 
@@ -144,9 +246,28 @@ export function AdminOrderDetailClient({ initialOrder }: AdminOrderDetailClientP
               {order.items.map((item, index) => (
                 <tr key={`${item.product}-${index}`}>
                   <td className="py-3 pr-4">
-                    <p className="font-medium text-foreground">{item.productName}</p>
+                    <div className="flex items-center gap-3">
+                      <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+                        {item.productImage ? (
+                          <Image
+                            src={item.productImage}
+                            alt={item.productName}
+                            fill
+                            className="object-cover"
+                            sizes="48px"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <PackageIcon className="h-5 w-5 text-muted-foreground/40" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="font-medium text-foreground">{item.productName}</p>
+                    </div>
                   </td>
-                  <td className="py-3 pr-4 text-muted-foreground">{item.color} / {item.size}</td>
+                  <td className="py-3 pr-4 text-muted-foreground">
+                    {item.color} {item.size ? `/ ${item.size}` : ""}
+                  </td>
                   <td className="py-3 pr-4 text-foreground">{item.quantity}</td>
                   <td className="py-3 pr-4 text-foreground">{formatCurrency(item.unitPrice)}</td>
                   <td className="py-3 font-medium text-foreground">{formatCurrency(item.lineTotal)}</td>
@@ -167,7 +288,7 @@ export function AdminOrderDetailClient({ initialOrder }: AdminOrderDetailClientP
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Discount</span>
-            <span className="font-medium text-foreground">-{formatCurrency(order.discountAmount)}</span>
+            <span className="font-medium text-emerald-600">-{formatCurrency(order.discountAmount)}</span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Shipping</span>

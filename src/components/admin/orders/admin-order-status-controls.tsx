@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { adminAllowedStatusTargets, type AdminOrderDetail } from "@/types/order";
-import type { OrderStatus } from "@/models/constants";
+import { orderStatuses, type OrderStatus } from "@/models/constants";
 
 type AdminOrderStatusControlsProps = {
   orderId: string;
@@ -88,9 +88,9 @@ export function AdminOrderStatusControls({ orderId, currentStatus, onUpdated }: 
         disabled={isSubmitting}
         className="rounded-full border border-border bg-card px-4 py-2 text-sm capitalize text-foreground outline-none focus:ring-2 focus:ring-ring"
       >
-        {availableTransitions.map((status) => (
-          <option key={status} value={status} className="capitalize">
-            {status}
+        {orderStatuses.map((status) => (
+          <option key={status} value={status} className="capitalize" disabled={!availableTransitions.includes(status)}>
+            {status} {!availableTransitions.includes(status) && "(Unavailable)"}
           </option>
         ))}
       </select>
