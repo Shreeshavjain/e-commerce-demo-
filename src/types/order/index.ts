@@ -1,4 +1,5 @@
 import type { Address } from "@/models/shared";
+import type { OrderStatus, PaymentStatus } from "@/models/constants";
 
 // ─── Cart item sent from the frontend to the create-order API ────────
 // Only IDs and quantities travel from the client — the server recalculates prices from MongoDB.
@@ -142,4 +143,97 @@ export type OrdersPagination = {
 export type PaginatedOrdersResponse = {
   orders: OrderSummary[];
   pagination: OrdersPagination;
+};
+
+// ─── Admin Orders — API response types ─────────────────────────────
+
+export type AdminOrderSortBy = "createdAt" | "totalAmount" | "status" | "paymentStatus";
+export type AdminOrderSortOrder = "asc" | "desc";
+
+export type AdminOrderFilters = {
+  page: number;
+  limit: number;
+  search?: string;
+  sortBy: AdminOrderSortBy;
+  sortOrder: AdminOrderSortOrder;
+  status?: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  fromDate?: string;
+  toDate?: string;
+};
+
+export type AdminOrderSummary = {
+  id: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  totalAmount: number;
+  paymentStatus: PaymentStatus;
+  orderStatus: OrderStatus;
+  createdAt: string;
+  itemCount: number;
+};
+
+export type AdminOrderTimelineEvent = {
+  key: string;
+  label: string;
+  at: string;
+  description: string;
+};
+
+export type AdminOrderDetail = {
+  id: string;
+  customer: {
+    id: string;
+    name: string;
+    email: string;
+    phoneNumber: string;
+  };
+  shippingAddress: SerializedAddress;
+  billingAddress: SerializedAddress | null;
+  items: OrderDetailItem[];
+  subtotal: number;
+  discountAmount: number;
+  shippingFee: number;
+  taxAmount: number;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentStatus: PaymentStatus;
+  razorpayOrderId: string;
+  razorpayPaymentId: string;
+  paidAt: string | null;
+  status: OrderStatus;
+  notes: string;
+  timeline: AdminOrderTimelineEvent[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PaginatedAdminOrdersResponse = {
+  orders: AdminOrderSummary[];
+  pagination: OrdersPagination;
+  appliedFilters: {
+    search: string;
+    status: OrderStatus | "all";
+    paymentStatus: PaymentStatus | "all";
+    fromDate: string;
+    toDate: string;
+    sortBy: AdminOrderSortBy;
+    sortOrder: AdminOrderSortOrder;
+  };
+};
+
+export type AdminOrderStatusTransition = {
+  from: OrderStatus;
+  to: OrderStatus[];
+};
+
+export const adminAllowedStatusTargets: Record<OrderStatus, OrderStatus[]> = {
+  pending: ["confirmed", "cancelled"],
+  confirmed: ["processing", "cancelled"],
+  processing: ["shipped", "cancelled"],
+  shipped: ["delivered"],
+  delivered: [],
+  cancelled: [],
+  refunded: [],
 };
