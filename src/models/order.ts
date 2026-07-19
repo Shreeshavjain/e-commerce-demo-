@@ -20,9 +20,12 @@ const orderSchema = new Schema(
     billingAddress: { type: addressSchema, default: null },
     paymentMethod: { type: String, enum: paymentMethods, required: true, default: "razorpay" },
     paymentStatus: { type: String, enum: paymentStatuses, default: "pending" },
+    // Idempotency key prevents duplicate orders from double-clicks or network retries.
+    idempotencyKey: { type: String, unique: true, sparse: true, index: true },
     razorpayOrderId: { type: String, default: "", trim: true },
     razorpayPaymentId: { type: String, default: "", trim: true },
-    transactionId: { type: String, default: "", trim: true },
+    // Store the verified signature for payment audit trails and dispute resolution.
+    razorpaySignature: { type: String, default: "", trim: true },
     paidAt: { type: Date },
     status: { type: String, enum: orderStatuses, default: "pending" },
     subtotal: { type: Number, required: true, min: 0 },
@@ -36,6 +39,9 @@ const orderSchema = new Schema(
     timestamps: true,
   }
 );
+
+// Fast lookup during payment verification — Razorpay sends back the order_id which we match against our DB.
+orderSchema.index({ razorpayOrderId: 1 }, { sparse: true });
 
 export type Order = InferSchemaType<typeof orderSchema> & {
   status: OrderStatus;

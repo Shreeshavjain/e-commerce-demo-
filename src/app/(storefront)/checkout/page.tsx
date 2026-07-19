@@ -2,13 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import React, { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CheckCircle2, ImageIcon, Loader2, LogOut, MapPin, ShoppingCart, UserRound } from "lucide-react";
+import { ArrowRight, CheckCircle2, ImageIcon, Loader2, LogOut, MapPin, ShieldCheck, ShoppingCart, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPrice } from "@/components/storefront/product-display-utils";
 import { useCartStore } from "@/stores/cart-store";
 import { useAuthActions, useAuthState } from "@/hooks/use-auth";
+import { useRazorpayCheckout, type CheckoutStep } from "@/hooks/use-razorpay-checkout";
+import type { CheckoutShippingAddress } from "@/types/order";
 
 /* ─── Shipping address types & validation ─────────────────────────── */
 
@@ -88,6 +90,21 @@ function validateShipping(address: ShippingAddress): ShippingErrors {
   return errors;
 }
 
+/** Convert the form-local address shape into the API-expected shipping address shape. */
+function toCheckoutAddress(address: ShippingAddress): CheckoutShippingAddress {
+  return {
+    fullName: address.fullName.trim(),
+    phoneNumber: address.phone.trim(),
+    line1: address.houseFlat.trim(),
+    line2: address.street.trim(),
+    city: address.city.trim(),
+    state: address.state.trim(),
+    postalCode: address.pincode.trim(),
+    country: "India",
+    landmark: address.landmark.trim(),
+  };
+}
+
 /* ─── Reusable labelled input ─────────────────────────────────────── */
 
 const INPUT_CLASS = "w-full rounded-2xl border bg-background px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-ring/40";
@@ -104,6 +121,7 @@ function FormField({
   placeholder,
   maxLength,
   inputMode,
+  disabled,
 }: {
   id: string;
   label: string;
@@ -116,6 +134,7 @@ function FormField({
   placeholder?: string;
   maxLength?: number;
   inputMode?: "text" | "numeric" | "tel" | "email";
+  disabled?: boolean;
 }) {
   return (
     <div className="space-y-1">
@@ -132,7 +151,8 @@ function FormField({
         placeholder={placeholder}
         maxLength={maxLength}
         inputMode={inputMode}
-        className={cn(INPUT_CLASS, error && "border-destructive/60 focus:ring-destructive/30")}
+        disabled={disabled}
+        className={cn(INPUT_CLASS, error && "border-destructive/60 focus:ring-destructive/30", disabled && "cursor-not-allowed opacity-60")}
       />
       {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
@@ -143,15 +163,23 @@ function FormField({
 
 function ShippingAddressForm({
   onValidityChange,
+  onAddressChange,
+  disabled,
 }: {
   onValidityChange?: (valid: boolean) => void;
+  onAddressChange?: (address: ShippingAddress) => void;
+  disabled?: boolean;
 }) {
   const [address, setAddress] = useState<ShippingAddress>(EMPTY_ADDRESS);
   const [errors, setErrors] = useState<ShippingErrors>({});
   const [touched, setTouched] = useState<Partial<Record<keyof ShippingAddress, boolean>>>({});
 
   const updateField = useCallback(<K extends keyof ShippingAddress>(field: K, value: string) => {
-    setAddress((prev) => ({ ...prev, [field]: value }));
+    setAddress((prev) => {
+      const next = { ...prev, [field]: value };
+      onAddressChange?.(next);
+      return next;
+    });
     // Clear the error for this field when typing
     setErrors((prev) => {
       if (!prev[field]) return prev;
@@ -159,7 +187,7 @@ function ShippingAddressForm({
       delete next[field];
       return next;
     });
-  }, []);
+  }, [onAddressChange]);
 
   const handleBlur = useCallback((field: keyof ShippingAddress) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -207,6 +235,7 @@ function ShippingAddressForm({
             error={touched.fullName ? errors.fullName : undefined}
             required
             placeholder="e.g. Rahul Sharma"
+            disabled={disabled}
           />
         </div>
 
@@ -223,6 +252,7 @@ function ShippingAddressForm({
           inputMode="tel"
           placeholder="10-digit mobile number"
           maxLength={10}
+          disabled={disabled}
         />
 
         {/* Email (optional) */}
@@ -236,6 +266,7 @@ function ShippingAddressForm({
           type="email"
           inputMode="email"
           placeholder="you@example.com"
+          disabled={disabled}
         />
 
         {/* House / Flat */}
@@ -248,6 +279,7 @@ function ShippingAddressForm({
           error={touched.houseFlat ? errors.houseFlat : undefined}
           required
           placeholder="e.g. B-204"
+          disabled={disabled}
         />
 
         {/* Street */}
@@ -260,6 +292,7 @@ function ShippingAddressForm({
           error={touched.street ? errors.street : undefined}
           required
           placeholder="e.g. MG Road"
+          disabled={disabled}
         />
 
         {/* Landmark (optional) — full width */}
@@ -270,6 +303,7 @@ function ShippingAddressForm({
             value={address.landmark}
             onChange={(v) => updateField("landmark", v)}
             placeholder="e.g. Near City Mall"
+            disabled={disabled}
           />
         </div>
 
@@ -283,6 +317,7 @@ function ShippingAddressForm({
           error={touched.city ? errors.city : undefined}
           required
           placeholder="e.g. Bangalore"
+          disabled={disabled}
         />
 
         {/* State */}
@@ -295,6 +330,7 @@ function ShippingAddressForm({
           error={touched.state ? errors.state : undefined}
           required
           placeholder="e.g. Karnataka"
+          disabled={disabled}
         />
 
         {/* Pincode */}
@@ -309,6 +345,7 @@ function ShippingAddressForm({
           inputMode="numeric"
           placeholder="6-digit pincode"
           maxLength={6}
+          disabled={disabled}
         />
       </div>
     </div>
@@ -493,6 +530,33 @@ function CheckoutAuthGate() {
   );
 }
 
+/* ─── Payment processing overlay ──────────────────────────────────── */
+
+function PaymentProcessingOverlay({ step }: { step: CheckoutStep }) {
+  if (step === "idle" || step === "success" || step === "error") return null;
+
+  const messages: Record<string, string> = {
+    "creating-order": "Creating your order...",
+    "awaiting-payment": "Waiting for payment...",
+    "verifying": "Verifying your payment...",
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+      <div className="flex flex-col items-center gap-4 rounded-3xl border border-border bg-card p-8 shadow-xl">
+        <div className="relative">
+          <Loader2 className="h-10 w-10 animate-spin text-foreground" />
+          <ShieldCheck className="absolute -bottom-1 -right-1 h-5 w-5 text-emerald-500" />
+        </div>
+        <div className="text-center">
+          <p className="text-base font-semibold text-foreground">{messages[step] ?? "Processing..."}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Please do not close this page</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Checkout page ───────────────────────────────────────────────── */
 
 export default function CheckoutPage() {
@@ -508,6 +572,35 @@ export default function CheckoutPage() {
 
   const { user } = useAuthState();
   const [shippingValid, setShippingValid] = useState(false);
+
+  // Track the current shipping address via a ref (avoids re-renders on every keystroke).
+  const shippingAddressRef = useRef<ShippingAddress>(EMPTY_ADDRESS);
+  const handleAddressChange = useCallback((address: ShippingAddress) => {
+    shippingAddressRef.current = address;
+  }, []);
+
+  // ── Razorpay checkout hook ──────────────────────────────────────
+  const { step: paymentStep, error: paymentError, isProcessing, initiateCheckout, reset: resetPayment } = useRazorpayCheckout({
+    userName: user?.name,
+    userEmail: user?.email,
+    userPhone: user?.phoneNumber ?? undefined,
+  });
+
+  const canPlaceOrder = Boolean(user) && shippingValid && items.length > 0 && !isProcessing;
+
+  const handlePlaceOrder = useCallback(() => {
+    if (!canPlaceOrder) return;
+
+    // Build the cart items payload — only IDs and quantities, no prices.
+    const cartItems = items.map((item) => ({
+      productId: item.productId,
+      variantId: item.variantId,
+      quantity: item.quantity,
+    }));
+
+    const shippingAddress = toCheckoutAddress(shippingAddressRef.current);
+    initiateCheckout(cartItems, shippingAddress);
+  }, [canPlaceOrder, items, initiateCheckout]);
 
   useEffect(() => {
     if (!hasHydrated) {
@@ -532,83 +625,123 @@ export default function CheckoutPage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 space-y-2">
-        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">Storefront</p>
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Checkout</h1>
-        <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
-          Fill in your shipping details and review your order before proceeding.
-        </p>
-      </div>
+    <>
+      {/* Payment processing overlay — covers the page during order creation, payment, and verification. */}
+      <PaymentProcessingOverlay step={paymentStep} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="space-y-6">
-          {/* ── Auth gate ── */}
-          <CheckoutAuthGate />
+      <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="mb-8 space-y-2">
+          <p className="text-sm font-semibold uppercase tracking-[0.22em] text-muted-foreground">Storefront</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">Checkout</h1>
+          <p className="max-w-2xl text-sm leading-7 text-muted-foreground sm:text-base">
+            Fill in your shipping details and review your order before proceeding.
+          </p>
+        </div>
 
-          {/* ── Shipping address form ── */}
-          <ShippingAddressForm onValidityChange={setShippingValid} />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <section className="space-y-6">
+            {/* ── Auth gate ── */}
+            <CheckoutAuthGate />
 
-          {/* ── Cart items ── */}
-          <div className="space-y-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Order Items ({totalItems})
-            </p>
-            {items.map((item) => (
-              <CheckoutItemRow
-                key={`${item.productId}:${item.variantId}`}
-                productImage={item.productImage}
-                productTitle={item.productTitle}
-                productBrand={item.productBrand}
-                variantName={item.variantName}
-                variantLabel={item.variantLabel}
-                quantity={item.quantity}
-                unitPrice={item.price.unitPrice}
-                lineTotal={item.lineTotal}
-              />
-            ))}
-          </div>
-        </section>
+            {/* ── Shipping address form ── */}
+            <ShippingAddressForm
+              onValidityChange={setShippingValid}
+              onAddressChange={handleAddressChange}
+              disabled={isProcessing}
+            />
 
-        <aside className="h-fit rounded-[1.5rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5 lg:sticky lg:top-6">
-          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Order summary</p>
+            {/* ── Cart items ── */}
+            <div className="space-y-4">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                Order Items ({totalItems})
+              </p>
+              {items.map((item) => (
+                <CheckoutItemRow
+                  key={`${item.productId}:${item.variantId}`}
+                  productImage={item.productImage}
+                  productTitle={item.productTitle}
+                  productBrand={item.productBrand}
+                  variantName={item.variantName}
+                  variantLabel={item.variantLabel}
+                  quantity={item.quantity}
+                  unitPrice={item.price.unitPrice}
+                  lineTotal={item.lineTotal}
+                />
+              ))}
+            </div>
+          </section>
 
-          <div className="mt-5 space-y-4">
-            <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
-              <span>Total items</span>
-              <span className="font-medium text-foreground">{totalItems}</span>
+          <aside className="h-fit rounded-[1.5rem] border border-border bg-card/85 p-5 shadow-sm shadow-black/5 lg:sticky lg:top-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Order summary</p>
+
+            <div className="mt-5 space-y-4">
+              <div className="flex items-center justify-between gap-4 text-sm text-muted-foreground">
+                <span>Total items</span>
+                <span className="font-medium text-foreground">{totalItems}</span>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+                <span className="text-sm font-medium text-muted-foreground">Subtotal</span>
+                <span className="text-lg font-semibold text-foreground">{formatPrice(subtotal)}</span>
+              </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
-              <span className="text-sm font-medium text-muted-foreground">Subtotal</span>
-              <span className="text-lg font-semibold text-foreground">{formatPrice(subtotal)}</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            disabled
-            title={!user ? "Sign in to place your order" : "Payment will be connected later"}
-            className={cn(
-              "mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition",
-              "cursor-not-allowed bg-muted text-muted-foreground"
+            {/* ── Payment error message ── */}
+            {paymentStep === "error" && paymentError && (
+              <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+                <p className="text-xs font-medium text-destructive">{paymentError}</p>
+                <button
+                  type="button"
+                  onClick={resetPayment}
+                  className="mt-2 text-xs font-semibold text-destructive underline underline-offset-2 hover:no-underline"
+                >
+                  Try again
+                </button>
+              </div>
             )}
-          >
-            Place Order
-            <ArrowRight className="h-4 w-4" />
-          </button>
 
-          {!user ? (
-            <p className="mt-3 text-center text-xs text-muted-foreground">
-              Sign in to place your order
-            </p>
-          ) : !shippingValid ? (
-            <p className="mt-3 text-center text-xs text-muted-foreground">
-              Complete the shipping address to continue
-            </p>
-          ) : null}
-        </aside>
-      </div>
-    </main>
+            {/* ── Place Order button ── */}
+            <button
+              type="button"
+              disabled={!canPlaceOrder}
+              onClick={handlePlaceOrder}
+              className={cn(
+                "mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition",
+                canPlaceOrder
+                  ? "bg-foreground text-background hover:opacity-90 active:scale-[0.98]"
+                  : "cursor-not-allowed bg-muted text-muted-foreground"
+              )}
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  Place Order
+                  <ArrowRight className="h-4 w-4" />
+                </>
+              )}
+            </button>
+
+            {!user ? (
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                Sign in to place your order
+              </p>
+            ) : !shippingValid ? (
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                Complete the shipping address to continue
+              </p>
+            ) : (
+              <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                Secured by Razorpay
+              </p>
+            )}
+          </aside>
+        </div>
+      </main>
+    </>
   );
 }

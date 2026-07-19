@@ -5,3 +5,4 @@ export * from "@/services/cloudinary";
 export * from "@/services/categories";
 export * from "@/services/products";
 export * from "@/services/uploads";
+export * from "@/services/orders";
