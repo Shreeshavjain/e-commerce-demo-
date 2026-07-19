@@ -64,9 +64,18 @@ function OrderSuccessContent() {
 
       {/* ── Actions ── */}
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        {orderId && (
+          <Link
+            href={`/my-orders/${orderId}`}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition hover:opacity-90 active:scale-[0.98]"
+          >
+            <Package className="h-4 w-4" />
+            View Order
+          </Link>
+        )}
         <Link
           href="/products"
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-6 py-3 text-sm font-semibold text-background transition hover:opacity-90 active:scale-[0.98]"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-border bg-card px-6 py-3 text-sm font-semibold text-foreground transition hover:bg-accent active:scale-[0.98]"
         >
           <ShoppingBag className="h-4 w-4" />
           Continue Shopping
