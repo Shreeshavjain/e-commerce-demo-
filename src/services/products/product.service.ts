@@ -470,7 +470,13 @@ async function listProductsWithVisibility(filters: ProductListFilters, visibilit
           ]
         });
       } else {
-        query.category = categoryId;
+        query.$and = query.$and || [];
+        query.$and.push({
+          $or: [
+            { category: categoryId },
+            { subCategory: categoryId }
+          ]
+        });
       }
     } else {
       // If a category was requested by slug but doesn't exist, return no products
